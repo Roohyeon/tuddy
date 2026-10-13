@@ -5,7 +5,9 @@ import type { Companion, FlightLeg, Trip } from '@/types/domain';
 import { COMPS } from '@/lib/constants';
 import { compLabel, D, dayDate, dayItems, dayTitle, ddayInfo, spent, tripDays } from '@/lib/trip';
 import { cx, fmtDur, josa, md, mdw, ordDay, toDate, today, WEEK, won } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useNav } from '@/hooks/useNav';
+import { useAccount, useTrip, useUpdateAccount } from '@/queries/account';
+import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 import { CheckRow, Ring, StopsList } from '@/components/ui/common';
@@ -23,7 +25,7 @@ export function PassTimes({ t }: { t: Trip }) {
 }
 
 export function HomeScreen() {
-  const t = useTrip(), { db, ui, setUI, update, go } = useTuddy(), sheets = useSheets();
+  const t = useTrip(), { db } = useAccount(), homeDay = useUIStore(s => s.day), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), { go } = useNav(), sheets = useSheets();
   const d = D(t), f = t.flight, dd = ddayInfo(t), n = tripDays(t);
   const pk = t.packing, pkDone = pk.filter(x => x.done).length, pct = pk.length ? pkDone / pk.length : 0;
   const dy = t.dday, dyDone = dy.filter(x => x.done).length;
@@ -31,7 +33,7 @@ export function HomeScreen() {
   const counts = Array.from({ length: n }, (_, i) => dayItems(t, i).length), maxC = Math.max(1, ...counts);
   const vk: Record<string, number> = {};
   t.vault.forEach(v => { const k = v.type === 'ticket' ? 'e티켓' : v.type === 'receipt' ? '영수증' : '바우처'; vk[k] = (vk[k] || 0) + 1; });
-  const day = Math.min(ui.day, n - 1);
+  const day = Math.min(homeDay, n - 1);
   const setComp = (c: Companion) => update((_, tr) => { tr.companion = c; tr.people = c === '혼자' ? 1 : Math.max(2, tr.people); });
   const fl = (lbl: string, key: keyof FlightLeg) => {
     const val = f.out[key], show = f.captured && val;

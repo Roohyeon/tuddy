@@ -5,7 +5,7 @@ import type { VaultFilter } from '@/types/domain';
 import { VKIND } from '@/lib/constants';
 import { vGroup, vIcon } from '@/lib/trip';
 import { cx, md, toDate } from '@/lib/utils';
-import { useTrip } from '@/store/TuddyProvider';
+import { useTrip } from '@/queries/account';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 import { Empty } from '@/components/ui/common';

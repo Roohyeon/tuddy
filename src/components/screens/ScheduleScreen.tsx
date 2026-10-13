@@ -4,16 +4,17 @@ import { Fragment, useState } from 'react';
 import { STYPE } from '@/lib/constants';
 import { D, dayDate, dayItems, dayTitle, fmtLocal, legOf, tripDays } from '@/lib/trip';
 import { cx, fmtDur, md, ordDay, toDate, WEEK } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
+import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 import { MapBlock } from '@/components/ui/MapBlock';
 import { Empty } from '@/components/ui/common';
 
 export function ScheduleScreen() {
-  const t = useTrip(), { ui, setUI, update, undoable } = useTuddy(), sheets = useSheets();
+  const t = useTrip(), sday = useUIStore(s => s.sday), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), undoable = useUndoable(), sheets = useSheets();
   const [editOrder, setEditOrder] = useState(false);
-  const d = D(t), n = tripDays(t), day = Math.min(ui.sday, n - 1), items = dayItems(t, day);
+  const d = D(t), n = tripDays(t), day = Math.min(sday, n - 1), items = dayItems(t, day);
   const move = items.reduce((a, s, i) => a + (items[i + 1] ? legOf(s, items[i + 1]).min : 0), 0);
   const cost = items.reduce((a, s) => a + (+s.cost || 0), 0);
 

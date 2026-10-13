@@ -5,7 +5,10 @@ import { AIRLINES } from '@/lib/constants';
 import { shrink } from '@/lib/files';
 import { D } from '@/lib/trip';
 import { hash, iso, toMin, today, toTime, uid, wait } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useAccount, useTrip, useUpdateAccount } from '@/queries/account';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { Icon } from '@/components/ui/Icon';
 import { SheetHead } from '@/components/ui/common';
 import { useSheets } from './useSheets';
@@ -16,7 +19,7 @@ interface CaptureResult { fill: Fill; booking: string; img: string | null }
 /** 항공권 캡처 → 탑승권 자동 입력 (데모: 실제 OCR 대신 예시 값) */
 export function CaptureSheet({ file }: { file: File }) {
   const t = useTrip(), d = D(t);
-  const { db, update, closeSheet, toast } = useTuddy();
+  const { db } = useAccount(), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast();
   const [img, setImg] = useState<string | null>(null);
   const [res, setRes] = useState<CaptureResult | null>(null);
 
@@ -93,8 +96,8 @@ const FIELDS = ['no', 'term', 'dep', 'arr', 'board', 'close', 'seat', 'gate'] as
 
 /** 탑승 정보 직접 수정 */
 export function FlightSheet() {
-  const t = useTrip(), { ui, update, closeSheet, toast } = useTuddy();
-  const dir = ui.passDir, f = t.flight, o = f[dir];
+  const t = useTrip(), dir = useUIStore(s => s.passDir), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast();
+  const f = t.flight, o = f[dir];
   const [v, setV] = useState<Record<string, string>>(() => ({
     passenger: f.passenger, booking: f.booking, ...Object.fromEntries(FIELDS.map(k => [k, o[k] || ''])),
   }));

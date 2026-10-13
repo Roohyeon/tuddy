@@ -3,17 +3,19 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Expense, ExpenseCat } from '@/types/domain';
 import { EXCAT, PAY_METHODS } from '@/lib/constants';
 import { shrink } from '@/lib/files';
-import { fetchLiveRate } from '@/lib/map';
 import { D, ddayInfo, fmtLocal, rateLabel, receiptsOf } from '@/lib/trip';
 import { iso, today, uid, wait, won } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
+import { useLiveRate } from '@/queries/external';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
 import { Icon } from '@/components/ui/Icon';
 import { Opts, SheetHead } from '@/components/ui/common';
 
 /** 지출 기록 · 수정 · 영수증 스캔 */
 export function ExpenseSheet({ id, scan }: { id?: string; scan?: File }) {
   const t = useTrip(), d = D(t);
-  const { update, closeSheet, toast, undoable } = useTuddy();
+  const update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast(), undoable = useUndoable();
   const e = t.expenses.find(x => x.id === id);
   const during = ddayInfo(t).phase === 1;
   const [amount, setAmount] = useState(e ? String(e.amt) : '');
@@ -97,21 +99,19 @@ export function ExpenseSheet({ id, scan }: { id?: string; scan?: File }) {
 
 /** 예산 · 환율 설정 */
 export function BudgetSheet() {
-  const t = useTrip(), d = D(t), { update, closeSheet, toast } = useTuddy();
+  const t = useTrip(), d = D(t), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast();
   const [budget, setBudget] = useState(String(t.budget));
   const [rate, setRate] = useState(String(+(t.rate * d.unit).toFixed(2)));
   const [live, setLive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(t.rateMode === 'live' ? '최근에 실시간 환율로 맞췄어요' : '직접 설정한 환율이에요');
+  const liveRate = useLiveRate(d.cur);
+  const status = liveRate.isFetching ? '환율을 불러오는 중…'
+    : liveRate.isError ? '환율을 불러오지 못했어요. 네트워크를 확인하거나 직접 입력해 주세요.'
+    : live && liveRate.data ? `실시간 환율이에요 · ${d.sym}${d.unit.toLocaleString()} = ${won(liveRate.data * d.unit)} (저장을 눌러 적용)`
+    : t.rateMode === 'live' ? '최근에 실시간 환율로 맞췄어요' : '직접 설정한 환율이에요';
 
   const loadLive = async () => {
-    setLoading(true); setStatus('환율을 불러오는 중…');
-    try {
-      const r = await fetchLiveRate(d.cur);
-      setRate(String(+(r * d.unit).toFixed(2))); setLive(true);
-      setStatus(`실시간 환율이에요 · ${d.sym}${d.unit.toLocaleString()} = ${won(r * d.unit)} (저장을 눌러 적용)`);
-    } catch { setStatus('환율을 불러오지 못했어요. 네트워크를 확인하거나 직접 입력해 주세요.'); }
-    setLoading(false);
+    const { data: r } = await liveRate.refetch();
+    if (r) { setRate(String(+(r * d.unit).toFixed(2))); setLive(true); }
   };
 
   const submit = (e: FormEvent) => {
@@ -134,7 +134,7 @@ export function BudgetSheet() {
       <label className="field"><span>총 예산 (원)</span><input className="input num" inputMode="numeric" value={budget} onChange={e => setBudget(e.target.value)} required /></label>
       {d.cur !== 'KRW' && <>
         <label className="field"><span>환율 · {d.sym}{d.unit.toLocaleString()}당 원</span><input className="input num" inputMode="decimal" value={rate} onChange={e => { setRate(e.target.value); setLive(false); }} required /></label>
-        <button className="btn soft" type="button" onClick={loadLive} disabled={loading}><Icon name="refresh" size="sm" /> 실시간 환율 불러오기</button>
+        <button className="btn soft" type="button" onClick={loadLive} disabled={liveRate.isFetching}><Icon name="refresh" size="sm" /> 실시간 환율 불러오기</button>
         <p className="muted" style={{ fontSize: 12.5 }}>{status}</p>
       </>}
       <button className="btn primary" type="submit">저장</button>

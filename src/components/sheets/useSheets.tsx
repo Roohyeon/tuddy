@@ -2,7 +2,7 @@
 /* 화면 어디서든 시트를 여는 액션 모음 */
 import { useMemo } from 'react';
 import { pickFile } from '@/lib/files';
-import { useTuddy } from '@/store/TuddyProvider';
+import { useSheetStore } from '@/stores/sheet';
 import { AlertsSheet, TripsSheet } from './AccountSheets';
 import { BudgetSheet, ExpenseSheet } from './BudgetSheets';
 import { DdaySheet, PackSheet } from './ChecklistSheets';
@@ -11,7 +11,7 @@ import { DatesSheet, MapSheet, RenameDaySheet, SchedSheet } from './ScheduleShee
 import { BookSheet, VoucherSaveSheet, VoucherViewSheet } from './VaultSheets';
 
 export function useSheets() {
-  const { openSheet, closeSheet } = useTuddy();
+  const openSheet = useSheetStore(s => s.openSheet), closeSheet = useSheetStore(s => s.closeSheet);
   return useMemo(() => ({
     addSchedule: (day: number) => openSheet(<SchedSheet day={day} />),
     editSchedule: (id: string) => openSheet(<SchedSheet key={id} id={id} />),

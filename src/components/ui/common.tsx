@@ -4,7 +4,9 @@ import type { CheckKind, DdayItem, PackingItem, Trip } from '@/types/domain';
 import { STYPE } from '@/lib/constants';
 import { dayItems, legOf } from '@/lib/trip';
 import { cx, fmtDur } from '@/lib/utils';
-import { useTuddy } from '@/store/TuddyProvider';
+import { useUndoable, useUpdateAccount } from '@/queries/account';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
 import { CheckBox, Icon, type IconName } from './Icon';
 
 export function Ring({ pct, size = 58, sw = 6 }: { pct: number; size?: number; sw?: number }) {
@@ -23,7 +25,7 @@ export function Empty({ icon, title, children, card }: { icon?: IconName; title:
 
 /** 준비물 · 출국 당일 체크 행 */
 export function CheckRow({ x, kind, strike }: { x: PackingItem | DdayItem; kind: CheckKind; strike?: boolean }) {
-  const { update, toast, undoable } = useTuddy();
+  const update = useUpdateAccount(), toast = useToast(), undoable = useUndoable();
   const listOf = (t: Trip) => (kind === 'pack' ? t.packing : t.dday) as (PackingItem | DdayItem)[];
   const toggle = () => {
     let allDone = false, nowDone = false;
@@ -59,7 +61,7 @@ export function Opts<V extends string | number>({ list, value, onChange }: { lis
 }
 
 export function SheetHead({ title }: { title: ReactNode }) {
-  const { closeSheet } = useTuddy();
+  const closeSheet = useSheetStore(s => s.closeSheet);
   return <div className="sheet-h"><h2>{title}</h2><button className="x-btn" type="button" onClick={closeSheet} aria-label="닫기"><Icon name="x" size="sm" /></button></div>;
 }
 

@@ -48,7 +48,7 @@
 
 ### 2. 앱 화면에 CSR을 적용한 이유
 - **사용자 인터랙션이 많아요**: 체크 토글, 바텀 시트, 순서 편집, 되돌리기 토스트, 지도 핀 선택, 일차 탭 전환처럼 화면을 바꾸는 조작이 매우 잦아요. 조작할 때마다 서버를 거치면 반응이 느려지니, 브라우저에서 바로 상태를 바꾸고 다시 그려요.
-- **클라이언트 상태 관리**: 계정과 여행 데이터는 브라우저 localStorage에 계정별로 저장돼요. 서버는 이 데이터를 볼 수 없으니 서버에서 미리 그릴 수 없어요. `TuddyProvider`(React Context)가 데이터를 읽어 들이고, 모든 변경은 `update()` 하나를 거쳐 복사 → 수정 → 저장돼요. 화면 사이에서 이어지는 UI 상태(선택한 일차, 체크리스트 탭, 탑승권 방향)도 여기서 관리해요.
+- **클라이언트 상태 관리**: 계정과 여행 데이터는 브라우저 localStorage에 계정별로 저장돼요. 서버는 이 데이터를 볼 수 없으니 서버에서 미리 그릴 수 없어요. 계정 데이터는 TanStack Query가, 화면 사이에서 이어지는 UI 상태(선택한 일차, 체크리스트 탭, 탑승권 방향, 시트, 토스트)는 Zustand가 브라우저에서 관리해요. 자세한 기준은 아래 [상태 관리](#상태-관리)에 있어요.
 - **동적 데이터 처리**: 실시간 환율(open.er-api), 장소 좌표 검색(Nominatim), 지도 크기에 맞춘 핀 위치 계산(`ResizeObserver`), 이미지 축소 · 캡처 인식(Canvas · FileReader), Web Share · 클립보드 API처럼 브라우저에서만 할 수 있는 처리가 대부분이에요.
 - **검색 노출이 필요 없어요**: 로그인한 사람만 보는 개인 대시보드라 검색엔진이 볼 내용이 없어요. 그래서 `(app)` 레이아웃에 `noindex`를 걸어 두었어요.
 - **동작 방식**: 앱 경로도 빌드 결과는 ○ Static이지만, 서버가 내려주는 건 데이터 없는 껍데기(기기 프레임 · 스플래시)뿐이에요. `Guard`가 localStorage를 읽은 뒤 로그인 · 여행 여부에 따라 `/login` · `/onboarding` · `/home`으로 보내고, 그 다음 화면을 그려요. 그래서 정적 호스팅이나 CDN만으로 배포할 수 있어요.
@@ -60,7 +60,9 @@
 | 언어 | **TypeScript 5.9** (`strict`), 도메인 타입은 `src/types/domain.ts` |
 | SSG | `generateStaticParams` + `dynamicParams = false`, 파일 기반 `opengraph-image`, `sitemap.ts` |
 | SSR | 비동기 `searchParams`를 읽는 서버 컴포넌트, `generateMetadata`(OG · Twitter · robots), Route Handler + `next/og` `ImageResponse` |
-| CSR | `'use client'` 컴포넌트, React Context(`TuddyProvider`), localStorage 저장, 클라이언트 라우트 가드 |
+| CSR | `'use client'` 컴포넌트, localStorage 저장, 클라이언트 라우트 가드 |
+| 서버 상태 | **TanStack Query v5** — 계정 조회 · 저장 뮤테이션, 로그인 · 회원가입, 실시간 환율, 장소 좌표 |
+| 클라이언트 상태 | **Zustand v5** — 세션, 화면 선택 값, 바텀 시트, 토스트 |
 | 스타일 | 전역 CSS(앱, 기존 디자인 그대로) + CSS Modules(기록북) |
 | 외부 API | Google 지도 임베드, OpenStreetMap Nominatim, open.er-api 환율 |
 
@@ -72,7 +74,7 @@ src/
 │  ├─ layout.tsx                 # 공통: html · 폰트 · metadataBase (서버)
 │  ├─ sitemap.ts                 # 샘플 기록북 sitemap
 │  ├─ (app)/                     # ── CSR 영역 ──
-│  │  ├─ layout.tsx              # TuddyProvider + AppChrome(탭바 · 시트 · 토스트), noindex
+│  │  ├─ layout.tsx              # QueryProvider + AppChrome(탭바 · 시트 · 토스트), noindex
 │  │  ├─ page.tsx                # / → 로그인 · 새 여행 · 홈으로 분기
 │  │  ├─ login/  onboarding/
 │  │  └─ (trip)/                 # 여행이 있어야 들어오는 화면 (Guard)
@@ -82,7 +84,19 @@ src/
 │     ├─ [slug]/opengraph-image.tsx
 │     └─ share/page.tsx          # SSR 공유 링크 기록북
 │        └─ og/route.tsx         # SSR OG 이미지
+├─ api/                         # 서버 역할 계층 (컴포넌트는 직접 부르지 않음)
+│  ├─ account.ts                 # 계정 조회 · 저장 · 로그인 · 회원가입 (지금은 localStorage)
+│  └─ external.ts                # 지오코딩 · 실시간 환율 fetch
+├─ queries/                      # TanStack Query 훅 (서버 상태)
+│  ├─ keys.ts                    # 쿼리 키
+│  ├─ account.ts                 # useAccount · useTrip · useUpdateAccount · useUndoable · useResetDemo
+│  ├─ auth.ts                    # useLogin · useSignup · useDemoLogin · useLogout
+│  └─ external.ts                # useLiveRate · useGeocodeStop
+├─ stores/                       # Zustand 스토어 (클라이언트 상태)
+│  └─ session · ui · sheet · toast
+├─ hooks/useNav.ts               # 탭 이동 · 뒤로 가기
 ├─ components/
+│  ├─ providers/QueryProvider.tsx
 │  ├─ book/                      # TravelBookView (서버 컴포넌트) + book.module.css
 │  ├─ screens/                   # 앱 화면 8개 (클라이언트 컴포넌트)
 │  ├─ sheets/                    # 바텀 시트 + useSheets()
@@ -91,10 +105,32 @@ src/
 │  ├─ book.ts                    # 여행 → 기록북 요약 · 링크 인코딩/검증 · 샘플 데이터
 │  ├─ bookOg.tsx                 # OG 이미지 렌더러
 │  └─ destinations · trip · map · storage · files · utils
-├─ store/TuddyProvider.tsx       # 클라이언트 상태
 └─ types/domain.ts               # 도메인 타입 (Trip · TravelBook …)
 ```
 이전 Vanilla JS 버전은 `legacy/`에 그대로 보관했어요.
+
+## 상태 관리
+예전에는 `TuddyProvider`(React Context) 하나가 계정 데이터, 저장, 화면 선택 값, 시트, 토스트를 모두 들고 있었어요. 값 하나만 바뀌어도 앱 전체가 다시 그려졌고, "서버에서 오는 데이터"와 "이 화면에서만 쓰는 값"이 섞여 있었어요. 지금은 역할에 따라 둘로 나눴어요.
+
+| 구분 | 담당 | 기준 | 예 |
+| --- | --- | --- | --- |
+| 서버 상태 | **TanStack Query** | 저장소(지금은 localStorage, 나중엔 백엔드)나 외부 API에 원본이 있고, 불러오기 · 저장 · 로딩 · 에러 · 캐시가 필요한 값 | 계정 · 여행 데이터, 로그인 결과, 실시간 환율, 장소 좌표 |
+| 클라이언트 상태 | **Zustand** | 이 브라우저 화면에서만 의미 있고, 저장하지 않아도 되는 값 | 로그인한 이메일, 선택한 일차 · 탭 · 탑승권 방향, 열린 시트, 토스트 |
+| 지역 상태 | `useState` | 한 컴포넌트 안에서만 쓰는 값 | 폼 입력값, 순서 편집 모드 |
+
+### 데이터 흐름
+```
+컴포넌트 ──useAccount()/useTrip()──▶ useQuery(['account', email]) ──▶ api/account.fetchAccount
+    │
+    └─update(db => …)──▶ ① 캐시를 복사해 고친 값으로 바로 교체 (낙관적 업데이트, 화면 즉시 반영)
+                         ② useMutation(scope: 'account') ──▶ api/account.putAccount
+                         ③ 저장 실패 → 토스트 · Promise<false> (보관함은 파일 없이 다시 저장)
+```
+- **컴포넌트는 역할별 훅만 불러요.** 데이터는 `useTrip()`과 `useUpdateAccount()`, 화면 값은 `useUIStore(s => s.sday)`처럼 필요한 필드만 구독해요. 시트를 열고 닫아도 데이터 화면은 다시 그려지지 않아요.
+- **`api/`는 서버를 대신하는 비동기 계층이에요.** 지금은 localStorage를 감싸고 있어서, 백엔드를 붙일 때는 `api/account.ts`의 함수 본문만 `fetch`로 바꾸면 돼요. 훅과 컴포넌트는 그대로예요.
+- **저장은 순서대로 처리돼요.** 같은 `scope`로 묶인 뮤테이션은 줄을 서서 실행되므로, 빠르게 여러 번 바꿔도 마지막 상태가 저장돼요.
+- **시트가 닫혀도 끝까지 처리해요.** 좌표 찾기처럼 시트를 닫은 뒤에 끝나는 작업은 결과 처리를 `useMutation` 옵션에 두어서, 컴포넌트가 사라져도 결과가 저장돼요.
+- **로딩 · 에러는 쿼리가 알려 줘요.** 실시간 환율은 `isFetching`과 `isError`로 안내 문구와 버튼 상태를 정하고, 로그인 실패는 뮤테이션 에러 메시지를 폼에 그대로 보여 줘요.
 
 ## 실행
 ```bash

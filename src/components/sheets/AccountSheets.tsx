@@ -1,9 +1,13 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { DEST } from '@/lib/destinations';
-import { ddayInfo, seedDemo } from '@/lib/trip';
+import { ddayInfo } from '@/lib/trip';
 import { cx, mdw, toDate } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useNav } from '@/hooks/useNav';
+import { useAccount, useResetDemo, useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
+import { useLogout } from '@/queries/auth';
+import { useSheetStore } from '@/stores/sheet';
+import { useUIStore } from '@/stores/ui';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { SheetHead } from '@/components/ui/common';
 import { useSheets } from './useSheets';
@@ -11,18 +15,18 @@ import { useSheets } from './useSheets';
 /** 여행 · 계정 */
 export function TripsSheet() {
   const router = useRouter();
-  const t = useTrip(), { db, update, replaceDB, closeSheet, setUI, logout, toast, undoable } = useTuddy();
+  const t = useTrip(), { db } = useAccount(), update = useUpdateAccount(), resetDemo = useResetDemo(), undoable = useUndoable(), logout = useLogout();
+  const closeSheet = useSheetStore(s => s.closeSheet), resetDays = useUIStore(s => s.resetDays);
   const sheets = useSheets();
   if (!db) return null;
 
-  const switchTrip = (id: string) => { update(x => { x.active = id; }); closeSheet(); setUI({ day: 0, sday: 0 }); router.push('/home'); };
+  const switchTrip = (id: string) => { update(x => { x.active = id; }); closeSheet(); resetDays(); router.push('/home'); };
   const deleteTrip = () => {
     const i = db.trips.findIndex(x => x.id === t.id), removed = t;
     update(x => { x.trips.splice(i, 1); x.active = x.trips[0].id; });
     closeSheet();
     undoable(`${DEST[removed.dest].city} 여행을 삭제했어요`, x => { x.trips.splice(i, 0, removed); x.active = removed.id; });
   };
-  const resetDemo = () => { replaceDB(seedDemo(db.name)); closeSheet(); setUI({ day: 0, sday: 0 }); toast('데모 데이터를 처음 상태로 되돌렸어요'); };
 
   return <>
     <SheetHead title="여행 · 계정" />
@@ -43,7 +47,7 @@ export function TripsSheet() {
     <button className="menu-li" onClick={() => { closeSheet(); router.push('/onboarding'); }}><Icon name="plus" /><span className="grow">새 여행 만들기<small>여행지 · 날짜만 고르면 체크리스트가 생겨요</small></span></button>
     <div className="form" style={{ marginTop: 18 }}>
       {db.trips.length > 1 && <button className="btn danger" onClick={deleteTrip}><Icon name="trash" size="sm" /> 이 여행 삭제</button>}
-      {db.demo && <button className="btn soft" onClick={resetDemo}><Icon name="refresh" size="sm" /> 데모 데이터 처음으로</button>}
+      {db.demo && <button className="btn soft" onClick={() => { closeSheet(); resetDemo.mutate(db.name); }} disabled={resetDemo.isPending}><Icon name="refresh" size="sm" /> 데모 데이터 처음으로</button>}
       <button className="btn soft" onClick={logout}><Icon name="logout" size="sm" /> 로그아웃</button>
     </div>
   </>;
@@ -51,7 +55,7 @@ export function TripsSheet() {
 
 /** 알림 */
 export function AlertsSheet() {
-  const t = useTrip(), { go, setUI, closeSheet } = useTuddy(), sheets = useSheets();
+  const t = useTrip(), setUI = useUIStore(s => s.setUI), closeSheet = useSheetStore(s => s.closeSheet), { go } = useNav(), sheets = useSheets();
   const dd = ddayInfo(t), todo = t.dday.filter(x => !x.done), left = t.packing.filter(x => !x.done).length;
   const toChecklist = (ctab: 'pack' | 'dday') => { closeSheet(); setUI({ ctab }); go('packing'); };
   const rows: [IconName, string, string | undefined, () => void][] = [

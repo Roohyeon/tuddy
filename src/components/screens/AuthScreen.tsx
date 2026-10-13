@@ -1,30 +1,21 @@
 'use client';
 /* 1. 로그인 / 회원가입 */
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { DEMO_EMAIL } from '@/lib/constants';
-import { loadUser, saveUser, saveUsers, users } from '@/lib/storage';
-import { seedDemo } from '@/lib/trip';
-import { cx, hash } from '@/lib/utils';
-import { useTuddy } from '@/store/TuddyProvider';
+import { cx } from '@/lib/utils';
+import { useDemoLogin, useLogin, useSignup } from '@/queries/auth';
 import { CheckBox, Icon, Logo } from '@/components/ui/Icon';
 
 type Mode = 'login' | 'signup';
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 export function AuthScreen() {
-  const router = useRouter();
-  const { startSession, toast } = useTuddy();
+  const login = useLogin(), signupM = useSignup(), demoLogin = useDemoLogin();
+  const busy = login.isPending || signupM.isPending || demoLogin.isPending;
   const [mode, setMode] = useState<Mode>('login');
   const [showPw, setShowPw] = useState(false);
   const [remember, setRemember] = useState(true);
   const [err, setErr] = useState('');
   const signup = mode === 'signup';
-
-  const enter = (email: string, keep = true) => {
-    startSession(email, keep);
-    router.replace(loadUser(email)?.trips.length ? '/home' : '/onboarding');
-  };
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); setErr('');
@@ -36,22 +27,14 @@ export function AuthScreen() {
       if (!EMAIL_RE.test(email)) return setErr('이메일 형식을 확인해 주세요.');
       if (pw.length < 6) return setErr('비밀번호는 6자 이상이어야 해요.');
       if (pw !== get('pw2')) return setErr('비밀번호가 서로 달라요.');
-      const us = users(); if (us[email] || email === DEMO_EMAIL) return setErr('이미 가입된 이메일이에요. 로그인해 주세요.');
-      us[email] = { pw: hash(email + ':' + pw), created: Date.now() }; saveUsers(us);
-      saveUser(email, { name, email, trips: [], active: null });
-      enter(email); toast(`${name}님, 환영해요! 첫 여행을 만들어 볼까요?`);
+      signupM.mutate({ name, email, pw }, { onError: e => setErr(e.message) });
     } else {
-      const u = users()[email];
       if (!EMAIL_RE.test(email)) return setErr('이메일 형식을 확인해 주세요.');
-      if (!u || u.pw !== hash(email + ':' + pw)) return setErr('이메일 또는 비밀번호가 맞지 않아요.');
-      enter(email, remember); toast(`${loadUser(email)?.name || ''}님, 다시 만나서 반가워요`);
+      login.mutate({ email, pw, remember }, { onError: e => setErr(e.message) });
     }
   };
 
-  const demo = () => {
-    if (!loadUser(DEMO_EMAIL)) saveUser(DEMO_EMAIL, seedDemo('블리'));
-    enter(DEMO_EMAIL); toast('블리님, 데모 여행에 오신 걸 환영해요');
-  };
+  const demo = () => demoLogin.mutate();
 
   const switchMode = (m: Mode) => { setMode(m); setShowPw(false); setErr(''); };
 
@@ -82,10 +65,10 @@ export function AuthScreen() {
             <label className="remember"><input type="checkbox" className="sr" checked={remember} onChange={e => setRemember(e.target.checked)} /><CheckBox on={remember} />로그인 상태 유지</label>
           </>}
           <p className="err" role="alert">{err}</p>
-          <button className="btn primary" type="submit">{signup ? '가입하고 여행 만들기' : '로그인'}</button>
+          <button className="btn primary" type="submit" disabled={busy}>{signup ? '가입하고 여행 만들기' : '로그인'}</button>
         </form>
         <div className="or">또는</div>
-        <button className="demo-btn" onClick={demo}>
+        <button className="demo-btn" onClick={demo} disabled={busy}>
           <span className="di"><Icon name="plane" size="sm" /></span>
           <span className="grow"><b>데모 여행으로 둘러보기</b><small>도쿄 3박 4일 샘플 데이터가 채워져 있어요</small></span>
           <Icon name="chev" size="sm" />

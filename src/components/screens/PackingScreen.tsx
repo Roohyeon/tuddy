@@ -4,16 +4,18 @@ import { useRef, useState, type FormEvent } from 'react';
 import { guessCat, PACK_CATS } from '@/lib/constants';
 import { ddayInfo } from '@/lib/trip';
 import { cx, mdw, toDate, uid } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useTrip, useUpdateAccount } from '@/queries/account';
+import { useToast } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { Icon } from '@/components/ui/Icon';
 import { CheckRow, Ring } from '@/components/ui/common';
 
 export function PackingScreen() {
-  const t = useTrip(), { ui, setUI, update, toast } = useTuddy();
+  const t = useTrip(), ctab = useUIStore(s => s.ctab), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), toast = useToast();
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const pk = t.packing, done = pk.filter(x => x.done).length, pct = pk.length ? done / pk.length : 0, dd = ddayInfo(t);
-  const dy = t.dday, dyDone = dy.filter(x => x.done).length, isPack = ui.ctab === 'pack';
+  const dy = t.dday, dyDone = dy.filter(x => x.done).length, isPack = ctab === 'pack';
   const groups = [...PACK_CATS, ...new Set(pk.map(p => p.cat).filter(c => !PACK_CATS.includes(c as never)))];
 
   // 입력하면 분류를 자동으로 추천해요

@@ -1,18 +1,23 @@
 'use client';
 /* 기기 프레임 · 하단 탭바 · 시트 · 토스트 · 스플래시 */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TABS } from '@/lib/constants';
 import { cx } from '@/lib/utils';
-import { useTuddy } from '@/store/TuddyProvider';
+import { useAccount } from '@/queries/account';
+import { useSessionStore } from '@/stores/session';
+import { useSheetStore } from '@/stores/sheet';
+import { useToastStore } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { Icon, Logo } from './Icon';
 
 const NAV_ROUTES = TABS.map(([k]) => '/' + k);
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { ready } = useTuddy();
+  const { ready } = useAccount();
+  useAppEffects(pathname);
   const nav = ready && NAV_ROUTES.includes(pathname);
   return (
     <div className={cx('device', !nav && 'no-nav')} id="app">
@@ -25,8 +30,22 @@ export function AppChrome({ children }: { children: ReactNode }) {
   );
 }
 
+/** 세션 복원 · 화면이 바뀌면 시트 닫기 · Esc로 시트 닫기 */
+function useAppEffects(pathname: string) {
+  const firstPath = useRef(pathname);
+  useEffect(() => { useSessionStore.getState().hydrate(); }, []);
+  useEffect(() => {
+    if (pathname !== firstPath.current) useUIStore.getState().setUI({ navigated: true });
+    useSheetStore.getState().closeSheet();
+  }, [pathname]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') useSheetStore.getState().closeSheet(); };
+    addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey);
+  }, []);
+}
+
 function BottomNav({ active }: { active: string }) {
-  const { trip } = useTuddy();
+  const { trip } = useAccount();
   const left = trip ? trip.packing.filter(p => !p.done).length : 0;
   return (
     <nav className="nav" aria-label="주요 메뉴">
@@ -40,7 +59,7 @@ function BottomNav({ active }: { active: string }) {
 }
 
 function SheetRoot() {
-  const { sheet, closeSheet } = useTuddy();
+  const sheet = useSheetStore(s => s.sheet), closeSheet = useSheetStore(s => s.closeSheet);
   if (!sheet) return null;
   return (
     <div className="backdrop" onClick={e => { if (e.target === e.currentTarget) closeSheet(); }}>
@@ -50,7 +69,7 @@ function SheetRoot() {
 }
 
 function ToastRoot() {
-  const { toastState, dismissToast } = useTuddy();
+  const toastState = useToastStore(s => s.current), dismissToast = useToastStore(s => s.dismiss);
   return (
     <div id="toast-root" aria-live="polite">
       {toastState && (

@@ -7,7 +7,10 @@ import { COMPS } from '@/lib/constants';
 import { DEST, DEST_KEYS, POPULAR, searchDest } from '@/lib/destinations';
 import { makeTrip, newOnboarding } from '@/lib/trip';
 import { cx, diffDays, fmtDur, mdw, toDate, won } from '@/lib/utils';
-import { useTuddy } from '@/store/TuddyProvider';
+import { useAccount, useUpdateAccount } from '@/queries/account';
+import { useLogout } from '@/queries/auth';
+import { useToast } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { Icon } from '@/components/ui/Icon';
 
 function DestRow({ d, on, onPick }: { d: Destination; on: boolean; onPick: (key: string) => void }) {
@@ -22,7 +25,7 @@ function DestRow({ d, on, onPick }: { d: Destination; on: boolean; onPick: (key:
 
 export function OnboardingScreen() {
   const router = useRouter();
-  const { db, update, setUI, toast, logout } = useTuddy();
+  const { db } = useAccount(), update = useUpdateAccount(), setUI = useUIStore(s => s.setUI), toast = useToast(), logout = useLogout();
   const [o, setO] = useState<OnboardingDraft>(newOnboarding);
   const [err, setErr] = useState('');
   const set = (patch: Partial<OnboardingDraft>) => setO(x => ({ ...x, ...patch }));

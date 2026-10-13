@@ -5,7 +5,7 @@ import type { ExpenseCat, ExpenseFilter } from '@/types/domain';
 import { EXCAT } from '@/lib/constants';
 import { compLabel, D, dailyValues, dayDate, dayTitle, expPhase, fmtLocal, rateLabel, spent, tripDays } from '@/lib/trip';
 import { cx, md, ORD, toDate, won } from '@/lib/utils';
-import { useTrip } from '@/store/TuddyProvider';
+import { useTrip } from '@/queries/account';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 import { Empty } from '@/components/ui/common';

@@ -4,7 +4,10 @@ import type { CSSProperties } from 'react';
 import type { NotifySettings, PassDir, Trip } from '@/types/domain';
 import { D } from '@/lib/trip';
 import { cx, fmtDur, hash, md, mdw, toDate, toMin, toTime, WEEK } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useNav } from '@/hooks/useNav';
+import { useAccount, useTrip, useUpdateAccount } from '@/queries/account';
+import { useToast } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 
@@ -55,8 +58,8 @@ const NOTIFY: [keyof NotifySettings, string, string][] = [
 ];
 
 export function PassScreen() {
-  const t = useTrip(), { db, ui, setUI, update, toast, back } = useTuddy(), sheets = useSheets();
-  const f = t.flight, dir = ui.passDir, o = f[dir], d = D(t), date = toDate(o.date);
+  const t = useTrip(), { db } = useAccount(), dir = useUIStore(s => s.passDir), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), toast = useToast(), { back } = useNav(), sheets = useSheets();
+  const f = t.flight, o = f[dir], d = D(t), date = toDate(o.date);
   const home: [string, string] = [d.from, d.fromName], dest: [string, string] = [d.code, d.airport];
   const [from, to] = dir === 'out' ? [home, dest] : [dest, home];
   const v = (x: string) => x || '—';

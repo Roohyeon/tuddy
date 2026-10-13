@@ -6,7 +6,10 @@ import { buildBook, shareUrl } from '@/lib/book';
 import { readFile, shrink } from '@/lib/files';
 import { compLabel, D, ddayInfo, spent, tripDays, vIcon } from '@/lib/trip';
 import { iso, md, mdw, toDate, today, toMin, uid, won } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useNav } from '@/hooks/useNav';
+import { useAccount, useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
 import { Icon } from '@/components/ui/Icon';
 import { Opts, SheetHead } from '@/components/ui/common';
 
@@ -19,7 +22,7 @@ const guessKind = (name: string): VaultType =>
 /** 바우처 올리기 */
 export function VoucherSaveSheet({ file }: { file: File }) {
   const t = useTrip();
-  const { update, closeSheet, toast } = useTuddy();
+  const update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast();
   const isImg = file.type.startsWith('image/');
   const [data, setData] = useState<string | null | undefined>(undefined);
   const [title, setTitle] = useState(file.name.replace(/\.[^.]+$/, ''));
@@ -39,16 +42,16 @@ export function VoucherSaveSheet({ file }: { file: File }) {
     const name = title.trim(); if (!name) return;
     const meta = { name: file.name, type: isImg ? 'image/jpeg' : file.type };
     const v: VaultItem = { id: uid(), type, title: name, sub: sub.trim() || file.name, date: iso(today()), file: data ? { ...meta, data } : meta, link: link || null };
-    const saved = update((_, tr) => {
+    closeSheet();
+    update((_, tr) => {
       if (v.link) { const s = tr.schedule.find(x => x.id === v.link); if (s && !s.memo) s.memo = `${VKIND[v.type]} 보관함에 저장됨`; }
       tr.vault.push(v);
-    });
-    closeSheet();
-    if (!saved) {
+    }).then(saved => {
+      if (saved) return toast('보관함에 저장했어요 · 오프라인에서도 열 수 있어요');
       // 저장 공간이 부족하면 파일 이름만 남겨요
       update((_, tr) => { const it = tr.vault.find(x => x.id === v.id); if (it) it.file = meta; });
       toast('저장 공간이 부족해 파일 이름만 저장했어요');
-    } else toast('보관함에 저장했어요 · 오프라인에서도 열 수 있어요');
+    });
   };
 
   return <>
@@ -73,7 +76,7 @@ export function VoucherSaveSheet({ file }: { file: File }) {
 
 /** 보관함 항목 보기 */
 export function VoucherViewSheet({ id }: { id: string }) {
-  const t = useTrip(), { go, update, closeSheet, undoable } = useTuddy();
+  const t = useTrip(), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), undoable = useUndoable(), { go } = useNav();
   const v = t.vault.find(x => x.id === id);
   if (!v) return null;
   const link = t.schedule.find(s => s.id === v.link);
@@ -112,7 +115,7 @@ export function VoucherViewSheet({ id }: { id: string }) {
 
 /** 여행 기록북 미리보기 */
 export function BookSheet() {
-  const t = useTrip(), d = D(t), n = tripDays(t), dd = ddayInfo(t), { db, toast } = useTuddy();
+  const t = useTrip(), d = D(t), n = tripDays(t), dd = ddayInfo(t), { db } = useAccount(), toast = useToast();
   // 공유 페이지는 서버에서 그려지므로(SSR) 공개해도 되는 요약만 링크에 담아요
   const url = shareUrl(buildBook(t, db?.name || '여행자'), location.origin);
   const share = async () => {

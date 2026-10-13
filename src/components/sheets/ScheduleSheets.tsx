@@ -3,10 +3,14 @@ import { useState, type FormEvent } from 'react';
 import { usePathname } from 'next/navigation';
 import type { StopType } from '@/types/domain';
 import { STYPE } from '@/lib/constants';
-import { geocode, gmapsUrl } from '@/lib/map';
+import { gmapsUrl } from '@/lib/map';
 import { D, datesInfo, dayDate, dayItems, dayTitle, legOf, tripDays } from '@/lib/trip';
 import { diffDays, fmtDur, md, mdw, toDate, toMin, toTime, uid } from '@/lib/utils';
-import { useTrip, useTuddy } from '@/store/TuddyProvider';
+import { useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
+import { useGeocodeStop } from '@/queries/external';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
+import { useUIStore } from '@/stores/ui';
 import { Icon } from '@/components/ui/Icon';
 import { MapBlock } from '@/components/ui/MapBlock';
 import { Opts, SheetHead } from '@/components/ui/common';
@@ -16,10 +20,10 @@ const STATUS: [string, string][] = [['', '없음'], ['예약 완료', '예약 �
 /** 장소 추가 · 일정 수정 */
 export function SchedSheet({ id, day: dayDefault }: { id?: string; day?: number }) {
   const t = useTrip(), d = D(t), n = tripDays(t);
-  const { update, closeSheet, toast, ui, setUI, undoable } = useTuddy();
+  const update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast(), sday = useUIStore(s => s.sday), setUI = useUIStore(s => s.setUI), undoable = useUndoable(), geocodeStop = useGeocodeStop();
   const pathname = usePathname();
   const s = t.schedule.find(x => x.id === id);
-  const initDay = s ? s.day : (dayDefault ?? ui.sday);
+  const initDay = s ? s.day : (dayDefault ?? sday);
   const [title, setTitle] = useState(s?.title || '');
   const [type, setType] = useState<StopType>(s?.type || 'sight');
   const [day, setDay] = useState(initDay);
@@ -52,10 +56,7 @@ export function SchedSheet({ id, day: dayDefault }: { id?: string; day?: number 
     });
     closeSheet(); setUI(pathname === '/home' ? { sday: day, day } : { sday: day });
     toast(isNew ? `${day + 1}일차에 '${name}'을(를) 추가했어요` : '일정을 저장했어요');
-    if (needGeo) geocode(t, name).then(ll => {
-      if (!ll) return toast(`'${name}' 위치를 찾지 못해 지도에서 이름으로 검색해요`);
-      update((_, tr) => { const it = tr.schedule.find(x => x.id === sid); if (it && it.title === name) { it.lat = ll.lat; it.lng = ll.lng; } });
-    });
+    if (needGeo) geocodeStop.mutate({ trip: t, sid, name });
   };
 
   const remove = () => {
@@ -96,7 +97,7 @@ export function SchedSheet({ id, day: dayDefault }: { id?: string; day?: number 
 
 /** 일차 이름 바꾸기 */
 export function RenameDaySheet({ i }: { i: number }) {
-  const t = useTrip(), { update, closeSheet } = useTuddy();
+  const t = useTrip(), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet);
   const [title, setTitle] = useState(dayTitle(t, i));
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -133,7 +134,7 @@ export function MapSheet({ day }: { day: number }) {
 
 /** 여행 날짜 변경 */
 export function DatesSheet() {
-  const t = useTrip(), { update, closeSheet, toast, setUI, ui } = useTuddy();
+  const t = useTrip(), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast(), setUI = useUIStore(s => s.setUI);
   const [start, setStart] = useState(t.start);
   const [end, setEnd] = useState(t.end);
   const [err, setErr] = useState('');
@@ -153,6 +154,7 @@ export function DatesSheet() {
       if (tr.titles) tr.titles = tr.titles.slice(0, n);
       tr.start = start; tr.end = end; tr.flight.out.date = start; tr.flight.back.date = end;
     });
+    const ui = useUIStore.getState();
     setUI({ day: Math.min(ui.day, n - 1), sday: Math.min(ui.sday, n - 1) });
     closeSheet();
     toast(`${mdw(toDate(start))} – ${mdw(toDate(end))}로 바꿨어요${moved ? ` · 일정 ${moved}개를 마지막 날로 옮겼어요` : back ? ` · 일정 ${back}개를 원래 날로 되돌렸어요` : ''}`);

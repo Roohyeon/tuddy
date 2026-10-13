@@ -3,12 +3,14 @@ import { useState, type FormEvent } from 'react';
 import type { PackCat } from '@/types/domain';
 import { guessCat, PACK_CATS } from '@/lib/constants';
 import { uid } from '@/lib/utils';
-import { useTuddy } from '@/store/TuddyProvider';
+import { useUpdateAccount } from '@/queries/account';
+import { useSheetStore } from '@/stores/sheet';
+import { useToast } from '@/stores/toast';
 import { Opts, SheetHead } from '@/components/ui/common';
 
 /** 준비물 추가 — 이름을 입력하면 분류를 추천해요 */
 export function PackSheet() {
-  const { update, closeSheet, toast } = useTuddy();
+  const update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast();
   const [t, setT] = useState('');
   const [sub, setSub] = useState('');
   const [cat, setCat] = useState<PackCat>('기타');
@@ -31,7 +33,7 @@ export function PackSheet() {
 
 /** 출국 당일 체크 항목 추가 */
 export function DdaySheet() {
-  const { update, closeSheet } = useTuddy();
+  const update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet);
   const [t, setT] = useState('');
   const [sub, setSub] = useState('');
   const submit = (e: FormEvent) => {
