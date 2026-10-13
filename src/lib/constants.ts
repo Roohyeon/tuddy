@@ -39,4 +39,3 @@ export const TABS: [TabKey, string, IconName][] = [
   ['home', '홈', 'home'], ['schedule', '일정', 'cal'], ['budget', '가계부', 'wallet'], ['packing', '체크리스트', 'list'], ['vault', '보관함', 'folder'],
 ];
 
-export const DEMO_EMAIL = 'demo@tuddy.app';

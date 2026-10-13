@@ -1,35 +1,42 @@
 'use client';
 /* =========================================================
-   계정 · 여행 데이터 (서버 상태)
+   계정 · 여행 데이터 (서버 상태 — Supabase Postgres)
    조회: useAccount / useTrip
-   변경: useUpdateAccount — 캐시를 먼저 바꾸고(낙관적 업데이트) 저장 API를 불러요
+   변경: useUpdateAccount — 캐시를 먼저 바꾸고(낙관적 업데이트) 바뀐 행만 DB에 저장해요
    ========================================================= */
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Trip, UserDB } from '@/types/domain';
-import { fetchAccount, putAccount } from '@/api/account';
+import { fetchAccount, saveAccount } from '@/api/account';
 import { activeTrip, seedDemo } from '@/lib/trip';
 import { useSessionStore } from '@/stores/session';
 import { useToastStore } from '@/stores/toast';
 import { useUIStore } from '@/stores/ui';
-import { queryKeys } from './keys';
+import { queryKeys, SAVE_ACCOUNT } from './keys';
 
 export type Mutator = (db: UserDB, trip: Trip) => void;
 
 /** 로그인한 계정 데이터 + 지금 보고 있는 여행 */
 export function useAccount() {
-  const email = useSessionStore(s => s.email), hydrated = useSessionStore(s => s.hydrated);
+  const qc = useQueryClient();
+  const user = useSessionStore(s => s.user), hydrated = useSessionStore(s => s.hydrated);
   const q = useQuery({
-    queryKey: queryKeys.account(email),
-    queryFn: () => fetchAccount(email!),
-    enabled: hydrated && !!email,
+    queryKey: queryKeys.account(user?.id ?? null),
+    queryFn: () => fetchAccount(user!),
+    enabled: !!user,
+    // 다른 기기에서 바꾼 내용을 창에 돌아올 때 가져와요. 저장 중일 땐 낙관적 값을 덮지 않게 건너뛰어요.
+    staleTime: 30_000,
+    refetchOnWindowFocus: () => qc.isMutating({ mutationKey: SAVE_ACCOUNT }) === 0,
   });
-  const db = email ? q.data ?? null : null;
+  const db = user ? q.data ?? null : null;
   return {
     /** 세션 · 계정 데이터를 다 읽었는지 */
-    ready: hydrated && (!email || !q.isPending),
+    ready: hydrated && (!user || !q.isPending),
     db,
     trip: activeTrip(db),
+    /** 불러오기 실패 (네트워크 · 스키마 미적용 등) */
+    error: user ? q.error : null,
+    retry: q.refetch,
   };
 }
 
@@ -39,29 +46,37 @@ export function useTrip(): Trip {
   return trip;
 }
 
-/** 계정 저장 뮤테이션 — 같은 scope라 순서대로 저장돼요 */
+/**
+ * 계정 저장 뮤테이션
+ * 같은 scope라 순서대로 저장돼요. 실패하면 서버 값으로 다시 맞춰요.
+ */
 function useSaveAccount() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, db }: { email: string; db: UserDB }) => putAccount(email, db),
+    mutationKey: SAVE_ACCOUNT,
+    mutationFn: ({ userId, prev, next }: { userId: string; prev: UserDB; next: UserDB }) => saveAccount(userId, prev, next),
     scope: { id: 'account' },
-    onError: e => useToastStore.getState().toast(e.message),
+    onError: (e, { userId }) => {
+      useToastStore.getState().toast(e.message);
+      qc.invalidateQueries({ queryKey: queryKeys.account(userId) });
+    },
   });
 }
 
 /**
- * db를 복사해 고친 뒤 캐시에 바로 반영하고 저장해요.
+ * db를 복사해 고친 뒤 캐시에 바로 반영하고, 바뀐 행만 DB에 저장해요.
  * 반환된 Promise는 저장에 성공하면 true예요.
  */
 export function useUpdateAccount() {
   const qc = useQueryClient(), { mutateAsync } = useSaveAccount();
   return useCallback((fn: Mutator): Promise<boolean> => {
-    const email = useSessionStore.getState().email, key = queryKeys.account(email);
-    const cur = qc.getQueryData<UserDB | null>(key);
-    if (!email || !cur) return Promise.resolve(false);
-    const next = structuredClone(cur);
+    const userId = useSessionStore.getState().user?.id ?? null, key = queryKeys.account(userId);
+    const prev = qc.getQueryData<UserDB>(key);
+    if (!userId || !prev) return Promise.resolve(false);
+    const next = structuredClone(prev);
     fn(next, activeTrip(next) as Trip);
     qc.setQueryData(key, next);
-    return mutateAsync({ email, db: next }).then(() => true, () => false);
+    return mutateAsync({ userId, prev, next }).then(() => true, () => false);
   }, [qc, mutateAsync]);
 }
 
@@ -73,19 +88,13 @@ export function useUndoable() {
   }, [update, toast]);
 }
 
-/** 데모 계정을 처음 상태로 */
+/** 데모 계정을 처음 상태로 — 기존 여행은 지우고 샘플 여행을 새로 넣어요 */
 export function useResetDemo() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (name: string) => {
-      const email = useSessionStore.getState().email; if (!email) throw new Error('로그인이 필요해요');
-      return { email, db: await putAccount(email, seedDemo(name)) };
-    },
-    onSuccess: ({ email, db }) => {
-      qc.setQueryData(queryKeys.account(email), db);
-      useUIStore.getState().resetDays();
-      useToastStore.getState().toast('데모 데이터를 처음 상태로 되돌렸어요');
-    },
-    onError: e => useToastStore.getState().toast(e.message),
-  });
+  const update = useUpdateAccount();
+  return useCallback(async () => {
+    const ok = await update(db => { const s = seedDemo(db.name); db.trips = s.trips; db.active = s.active; });
+    if (!ok) return;
+    useUIStore.getState().resetDays();
+    useToastStore.getState().toast('데모 데이터를 처음 상태로 되돌렸어요');
+  }, [update]);
 }

@@ -1,5 +1,15 @@
 /* ---------- 공용 유틸 ---------- */
-export const uid = () => Math.random().toString(36).slice(2, 9);
+/** UUID v7 — 앞부분이 시각이라 id 순서 = 만든 순서 (DB에서 id로 정렬해 목록 순서를 지켜요) */
+let lastMs = 0, seq = 0;
+export const uid = () => {
+  let ms = Date.now();
+  if (ms <= lastMs) { ms = lastMs; if (++seq > 0xfff) { ms = ++lastMs; seq = 0; } }
+  else { lastMs = ms; seq = Math.floor(Math.random() * 0x400); }
+  const r = crypto.getRandomValues(new Uint8Array(8));
+  const hex = (n: number, w: number) => n.toString(16).padStart(w, '0');
+  const b = Array.from(r, x => hex(x, 2)).join('');
+  return `${hex(Math.floor(ms / 0x10000), 8)}-${hex(ms % 0x10000, 4)}-7${hex(seq, 3)}-${hex((r[0] & 0x3f) | 0x80, 2)}${b.slice(2, 4)}-${b.slice(4, 16)}`;
+};
 export const pad = (n: number) => String(n).padStart(2, '0');
 export const toDate = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

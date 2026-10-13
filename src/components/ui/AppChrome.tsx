@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TABS } from '@/lib/constants';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { cx } from '@/lib/utils';
 import { useAccount } from '@/queries/account';
 import { useSessionStore } from '@/stores/session';
@@ -11,17 +12,22 @@ import { useSheetStore } from '@/stores/sheet';
 import { useToastStore } from '@/stores/toast';
 import { useUIStore } from '@/stores/ui';
 import { Icon, Logo } from './Icon';
+import { Empty } from './common';
 
 const NAV_ROUTES = TABS.map(([k]) => '/' + k);
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { ready } = useAccount();
+  const { ready, error, retry } = useAccount();
   useAppEffects(pathname);
-  const nav = ready && NAV_ROUTES.includes(pathname);
+  const ok = ready && !error, nav = ok && NAV_ROUTES.includes(pathname);
   return (
     <div className={cx('device', !nav && 'no-nav')} id="app">
-      <div id="view">{ready ? children : null}</div>
+      <div id="view">
+        {!isSupabaseConfigured ? <SetupNotice />
+          : error ? <LoadError msg={error.message} retry={() => retry()} />
+          : ready ? children : null}
+      </div>
       {nav && <BottomNav active={pathname.slice(1)} />}
       <SheetRoot />
       <ToastRoot />
@@ -30,10 +36,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
   );
 }
 
-/** 세션 복원 · 화면이 바뀌면 시트 닫기 · Esc로 시트 닫기 */
+/** Supabase 세션 구독 · 화면이 바뀌면 시트 닫기 · Esc로 시트 닫기 */
 function useAppEffects(pathname: string) {
   const firstPath = useRef(pathname);
-  useEffect(() => { useSessionStore.getState().hydrate(); }, []);
+  useEffect(() => useSessionStore.getState().listen(), []);
   useEffect(() => {
     if (pathname !== firstPath.current) useUIStore.getState().setUI({ navigated: true });
     useSheetStore.getState().closeSheet();
@@ -42,6 +48,25 @@ function useAppEffects(pathname: string) {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') useSheetStore.getState().closeSheet(); };
     addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey);
   }, []);
+}
+
+function SetupNotice() {
+  return (
+    <main className="fade-in" style={{ padding: '80px 24px' }}>
+      <Empty icon="shield" title="Supabase 연결이 필요해요" card>
+        <span>.env.local에 NEXT_PUBLIC_SUPABASE_URL과 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY를 넣고 개발 서버를 다시 시작해 주세요. 자세한 방법은 README의 &lsquo;Supabase 설정&rsquo;에 있어요.</span>
+      </Empty>
+    </main>
+  );
+}
+
+function LoadError({ msg, retry }: { msg: string; retry: () => void }) {
+  return (
+    <main className="fade-in" style={{ padding: '80px 24px', display: 'grid', gap: 14 }}>
+      <Empty icon="shield" title="여행 데이터를 불러오지 못했어요" card><span>{msg}</span></Empty>
+      <button className="btn primary" onClick={retry}><Icon name="refresh" size="sm" /> 다시 시도</button>
+    </main>
+  );
 }
 
 function BottomNav({ active }: { active: string }) {

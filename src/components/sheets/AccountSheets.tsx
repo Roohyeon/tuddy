@@ -47,7 +47,7 @@ export function TripsSheet() {
     <button className="menu-li" onClick={() => { closeSheet(); router.push('/onboarding'); }}><Icon name="plus" /><span className="grow">새 여행 만들기<small>여행지 · 날짜만 고르면 체크리스트가 생겨요</small></span></button>
     <div className="form" style={{ marginTop: 18 }}>
       {db.trips.length > 1 && <button className="btn danger" onClick={deleteTrip}><Icon name="trash" size="sm" /> 이 여행 삭제</button>}
-      {db.demo && <button className="btn soft" onClick={() => { closeSheet(); resetDemo.mutate(db.name); }} disabled={resetDemo.isPending}><Icon name="refresh" size="sm" /> 데모 데이터 처음으로</button>}
+      {db.demo && <button className="btn soft" onClick={() => { closeSheet(); resetDemo(); }}><Icon name="refresh" size="sm" /> 데모 데이터 처음으로</button>}
       <button className="btn soft" onClick={logout}><Icon name="logout" size="sm" /> 로그아웃</button>
     </div>
   </>;

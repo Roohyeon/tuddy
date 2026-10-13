@@ -7,7 +7,7 @@
 ## 화면
 | 화면 | 주요 기능 |
 | --- | --- |
-| **로그인 / 회원가입** | 이메일 가입·로그인, 로그인 상태 유지, 데모 여행으로 둘러보기 (계정별 데이터 분리) |
+| **로그인 / 회원가입** | Supabase Auth 이메일 가입·로그인(메일 인증), Google 로그인, 로그인 상태 유지, 데모 여행으로 둘러보기(익명 로그인) |
 | **새 여행 만들기** | 37개 나라 · 80개 도시 검색(도시·나라·영문·공항 코드) → 날짜·동행 → 예산. 여행지·계절(남반구 포함)·일수에 맞춰 준비물/출국 체크리스트, 비자·ETA, 콘센트, 통화 자동 설정 |
 | **홈 (PASS)** | 탑승권 카드(D-Day, 동행 선택, 여행 날짜 변경), 항공권 캡처 → 편명·좌석·게이트 자동 입력, 출국 당일 체크, 준비 현황, 빠른 추가, 일자별 동선 |
 | **나의 탑승권** | 가는 편/오는 편, QR, 정보 수정, 출국 당일 공항 타임라인, 알림 토글, 공유 |
@@ -32,7 +32,7 @@
 | 공유 링크 기록북 | `/book/share?d=…` | **SSR**: 요청마다 링크 데이터를 검증한 뒤 HTML과 메타 태그 생성 | ƒ Dynamic |
 | 공유 링크 OG 이미지 | `/book/share/og?d=…` | **SSR**: Route Handler에서 `ImageResponse`로 생성 | ƒ Dynamic |
 | sitemap | `/sitemap.xml` | 정적 생성 (샘플 기록북만 포함) | ○ Static |
-| 앱 화면 | `/login` `/onboarding` `/home` `/schedule` `/budget` `/packing` `/vault` `/pass` | **CSR**: 빈 앱 껍데기만 정적으로 받고, 데이터는 브라우저(localStorage)에서 읽어 그림 | ○ Static 껍데기 + CSR |
+| 앱 화면 | `/login` `/onboarding` `/home` `/schedule` `/budget` `/packing` `/vault` `/pass` | **CSR**: 빈 앱 껍데기만 정적으로 받고, 데이터는 브라우저가 Supabase에서 받아 그림 | ○ Static 껍데기 + CSR |
 
 ### 1. 공유용 여행 기록북에 SSR/SSG를 적용한 이유
 - **SNS 공유 미리보기**: 카카오톡 · 슬랙 · X · 페이스북의 링크 미리보기 봇은 대부분 JavaScript를 실행하지 않아요. CSR로 만들면 봇에게는 빈 `<div>`만 보여서 제목 · 설명 · 썸네일이 비게 돼요. 서버에서 `og:title` · `og:description` · `og:image` · `twitter:card`를 HTML에 넣어 보내야 미리보기 카드가 제대로 나와요. 썸네일도 `next/og`로 여행지 · 날짜 · 방문 수를 담은 1200×630 이미지를 서버에서 만들어요.
@@ -48,10 +48,10 @@
 
 ### 2. 앱 화면에 CSR을 적용한 이유
 - **사용자 인터랙션이 많아요**: 체크 토글, 바텀 시트, 순서 편집, 되돌리기 토스트, 지도 핀 선택, 일차 탭 전환처럼 화면을 바꾸는 조작이 매우 잦아요. 조작할 때마다 서버를 거치면 반응이 느려지니, 브라우저에서 바로 상태를 바꾸고 다시 그려요.
-- **클라이언트 상태 관리**: 계정과 여행 데이터는 브라우저 localStorage에 계정별로 저장돼요. 서버는 이 데이터를 볼 수 없으니 서버에서 미리 그릴 수 없어요. 계정 데이터는 TanStack Query가, 화면 사이에서 이어지는 UI 상태(선택한 일차, 체크리스트 탭, 탑승권 방향, 시트, 토스트)는 Zustand가 브라우저에서 관리해요. 자세한 기준은 아래 [상태 관리](#상태-관리)에 있어요.
+- **클라이언트 상태 관리**: 계정과 여행 데이터는 로그인한 사용자의 토큰으로 브라우저가 Supabase에서 직접 읽고 써요. 개인 데이터라 검색 노출이 필요 없고, 조작할 때마다 낙관적 업데이트로 바로 반영하는 편이 체감 속도가 좋아요. 계정 데이터는 TanStack Query가, 화면 사이에서 이어지는 UI 상태(선택한 일차, 체크리스트 탭, 탑승권 방향, 시트, 토스트)는 Zustand가 브라우저에서 관리해요. 자세한 기준은 아래 [상태 관리](#상태-관리)에 있어요.
 - **동적 데이터 처리**: 실시간 환율(open.er-api), 장소 좌표 검색(Nominatim), 지도 크기에 맞춘 핀 위치 계산(`ResizeObserver`), 이미지 축소 · 캡처 인식(Canvas · FileReader), Web Share · 클립보드 API처럼 브라우저에서만 할 수 있는 처리가 대부분이에요.
 - **검색 노출이 필요 없어요**: 로그인한 사람만 보는 개인 대시보드라 검색엔진이 볼 내용이 없어요. 그래서 `(app)` 레이아웃에 `noindex`를 걸어 두었어요.
-- **동작 방식**: 앱 경로도 빌드 결과는 ○ Static이지만, 서버가 내려주는 건 데이터 없는 껍데기(기기 프레임 · 스플래시)뿐이에요. `Guard`가 localStorage를 읽은 뒤 로그인 · 여행 여부에 따라 `/login` · `/onboarding` · `/home`으로 보내고, 그 다음 화면을 그려요. 그래서 정적 호스팅이나 CDN만으로 배포할 수 있어요.
+- **동작 방식**: 앱 경로도 빌드 결과는 ○ Static이지만, 서버가 내려주는 건 데이터 없는 껍데기(기기 프레임 · 스플래시)뿐이에요. `Guard`가 Supabase 세션과 계정 데이터를 확인한 뒤 로그인 · 여행 여부에 따라 `/login` · `/onboarding` · `/home`으로 보내고, 그 다음 화면을 그려요. 그래서 정적 호스팅이나 CDN만으로 배포할 수 있어요.
 
 ### 3. 기술 스택 · 렌더링 구조 요약
 | 영역 | 사용 기술 |
@@ -60,7 +60,8 @@
 | 언어 | **TypeScript 5.9** (`strict`), 도메인 타입은 `src/types/domain.ts` |
 | SSG | `generateStaticParams` + `dynamicParams = false`, 파일 기반 `opengraph-image`, `sitemap.ts` |
 | SSR | 비동기 `searchParams`를 읽는 서버 컴포넌트, `generateMetadata`(OG · Twitter · robots), Route Handler + `next/og` `ImageResponse` |
-| CSR | `'use client'` 컴포넌트, localStorage 저장, 클라이언트 라우트 가드 |
+| CSR | `'use client'` 컴포넌트, 클라이언트 라우트 가드 |
+| 백엔드 | **Supabase** — Auth(이메일 · Google · 익명), Postgres, RLS (`supabase/migrations`) |
 | 서버 상태 | **TanStack Query v5** — 계정 조회 · 저장 뮤테이션, 로그인 · 회원가입, 실시간 환율, 장소 좌표 |
 | 클라이언트 상태 | **Zustand v5** — 세션, 화면 선택 값, 바텀 시트, 토스트 |
 | 스타일 | 전역 CSS(앱, 기존 디자인 그대로) + CSS Modules(기록북) |
@@ -85,7 +86,8 @@ src/
 │     └─ share/page.tsx          # SSR 공유 링크 기록북
 │        └─ og/route.tsx         # SSR OG 이미지
 ├─ api/                         # 서버 역할 계층 (컴포넌트는 직접 부르지 않음)
-│  ├─ account.ts                 # 계정 조회 · 저장 · 로그인 · 회원가입 (지금은 localStorage)
+│  ├─ account.ts                 # Supabase: 계정 조회 · 변경분 저장 · 로그인 · 회원가입 · 데모
+│  ├─ rows.ts                    # UserDB ↔ 테이블 행 변환, 변경분(diff) 계산
 │  └─ external.ts                # 지오코딩 · 실시간 환율 fetch
 ├─ queries/                      # TanStack Query 훅 (서버 상태)
 │  ├─ keys.ts                    # 쿼리 키
@@ -104,8 +106,10 @@ src/
 ├─ lib/
 │  ├─ book.ts                    # 여행 → 기록북 요약 · 링크 인코딩/검증 · 샘플 데이터
 │  ├─ bookOg.tsx                 # OG 이미지 렌더러
-│  └─ destinations · trip · map · storage · files · utils
+│  ├─ supabase/                  # 브라우저 클라이언트 · 테이블 타입
+│  └─ destinations · trip · map · files · utils
 └─ types/domain.ts               # 도메인 타입 (Trip · TravelBook …)
+supabase/migrations/             # 테이블 · RLS · 가입 트리거 SQL
 ```
 이전 Vanilla JS 버전은 `legacy/`에 그대로 보관했어요.
 
@@ -114,28 +118,95 @@ src/
 
 | 구분 | 담당 | 기준 | 예 |
 | --- | --- | --- | --- |
-| 서버 상태 | **TanStack Query** | 저장소(지금은 localStorage, 나중엔 백엔드)나 외부 API에 원본이 있고, 불러오기 · 저장 · 로딩 · 에러 · 캐시가 필요한 값 | 계정 · 여행 데이터, 로그인 결과, 실시간 환율, 장소 좌표 |
-| 클라이언트 상태 | **Zustand** | 이 브라우저 화면에서만 의미 있고, 저장하지 않아도 되는 값 | 로그인한 이메일, 선택한 일차 · 탭 · 탑승권 방향, 열린 시트, 토스트 |
+| 서버 상태 | **TanStack Query** | Supabase나 외부 API에 원본이 있고, 불러오기 · 저장 · 로딩 · 에러 · 캐시가 필요한 값 | 계정 · 여행 데이터, 로그인 결과, 실시간 환율, 장소 좌표 |
+| 클라이언트 상태 | **Zustand** | 이 브라우저 화면에서만 의미 있고, 저장하지 않아도 되는 값 | 로그인 세션(Supabase Auth 리스너가 채움), 선택한 일차 · 탭 · 탑승권 방향, 열린 시트, 토스트 |
 | 지역 상태 | `useState` | 한 컴포넌트 안에서만 쓰는 값 | 폼 입력값, 순서 편집 모드 |
 
 ### 데이터 흐름
 ```
-컴포넌트 ──useAccount()/useTrip()──▶ useQuery(['account', email]) ──▶ api/account.fetchAccount
-    │
+Supabase Auth ──onAuthStateChange──▶ Zustand useSessionStore(user)
+                                            │
+컴포넌트 ──useAccount()/useTrip()──▶ useQuery(['account', user.id]) ──▶ api/account.fetchAccount
+    │                                                                    (profiles + trips + 하위 5개 테이블)
     └─update(db => …)──▶ ① 캐시를 복사해 고친 값으로 바로 교체 (낙관적 업데이트, 화면 즉시 반영)
-                         ② useMutation(scope: 'account') ──▶ api/account.putAccount
-                         ③ 저장 실패 → 토스트 · Promise<false> (보관함은 파일 없이 다시 저장)
+                         ② useMutation(scope: 'account') ──▶ api/account.saveAccount
+                            → 이전 값과 비교해 바뀐 행만 upsert / delete
+                         ③ 실패 → 토스트 + 서버 값으로 다시 맞춤(invalidate) · Promise<false>
 ```
 - **컴포넌트는 역할별 훅만 불러요.** 데이터는 `useTrip()`과 `useUpdateAccount()`, 화면 값은 `useUIStore(s => s.sday)`처럼 필요한 필드만 구독해요. 시트를 열고 닫아도 데이터 화면은 다시 그려지지 않아요.
-- **`api/`는 서버를 대신하는 비동기 계층이에요.** 지금은 localStorage를 감싸고 있어서, 백엔드를 붙일 때는 `api/account.ts`의 함수 본문만 `fetch`로 바꾸면 돼요. 훅과 컴포넌트는 그대로예요.
+- **컴포넌트는 Supabase를 몰라요.** 화면은 예전처럼 `update(db => …)`로 UserDB를 고치기만 하고, `api/rows.ts`가 이전 값과 비교해 바뀐 행만 골라 DB에 보내요. 준비물 하나를 체크하면 `packing_items` 1행만 upsert돼요. 그래서 localStorage에서 Supabase로 옮길 때 화면 코드는 거의 바꾸지 않았어요.
 - **저장은 순서대로 처리돼요.** 같은 `scope`로 묶인 뮤테이션은 줄을 서서 실행되므로, 빠르게 여러 번 바꿔도 마지막 상태가 저장돼요.
 - **시트가 닫혀도 끝까지 처리해요.** 좌표 찾기처럼 시트를 닫은 뒤에 끝나는 작업은 결과 처리를 `useMutation` 옵션에 두어서, 컴포넌트가 사라져도 결과가 저장돼요.
 - **로딩 · 에러는 쿼리가 알려 줘요.** 실시간 환율은 `isFetching`과 `isError`로 안내 문구와 버튼 상태를 정하고, 로그인 실패는 뮤테이션 에러 메시지를 폼에 그대로 보여 줘요.
 
+## Supabase 설정
+### 1. 프로젝트 · 환경 변수
+1. [supabase.com](https://supabase.com)에서 프로젝트를 만들어요.
+2. `.env.example`을 `.env.local`로 복사하고 **Project Settings › API Keys**의 값을 넣어요.
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...   # 또는 NEXT_PUBLIC_SUPABASE_ANON_KEY
+   NEXT_PUBLIC_SUPABASE_GOOGLE_AUTH=false                     # Google 로그인을 켰다면 true
+   ```
+   - 이 두 값은 브라우저에 공개되는 키예요. 데이터 보호는 RLS가 맡아요.
+   - **service_role / secret 키는 절대 넣지 마세요.** RLS를 우회해요.
+   - 환경 변수를 바꾼 뒤에는 개발 서버를 다시 시작해야 해요(`NEXT_PUBLIC_` 값은 빌드할 때 들어가요).
+   - 값이 없으면 앱 화면에 "Supabase 연결이 필요해요" 안내가 떠요. 공유 기록북(`/book/*`)은 Supabase 없이도 돼요.
+
+### 2. 테이블 · RLS 만들기
+`supabase/migrations/20261013000000_init.sql`을 대시보드 **SQL Editor**에 붙여 넣고 실행해요. Supabase CLI를 쓴다면 `npx supabase link` 뒤 `npx supabase db push`로도 돼요.
+
+| 테이블 | 내용 |
+| --- | --- |
+| `profiles` | 계정당 1행. 이름, 데모 여부, 지금 보는 여행. 가입하면 트리거가 만들어요 |
+| `trips` | 여행지 · 날짜 · 동행 · 예산 · 환율, 탑승권(`flight` jsonb), 알림 설정, 일차 이름 |
+| `schedule_items` · `expenses` · `packing_items` · `dday_items` · `vault_items` | 일정 · 지출 · 준비물 · 출국 당일 체크 · 보관함. 모두 `trip_id`, `user_id`가 있어요 |
+
+id는 앱이 만드는 **UUID v7**이에요. 앞부분이 시각이라 `order by id`가 곧 만든 순서이고, 오프라인에서 만든 항목도 서버를 거치지 않고 id를 정할 수 있어요.
+
+### 3. 보안: RLS (행 수준 보안)
+모든 테이블에 RLS를 켜고, 로그인한 본인 행만 다루도록 정책을 걸었어요.
+```sql
+alter table public.trips enable row level security;
+
+create policy "trips: 본인 조회" on public.trips
+  for select to authenticated using ((select auth.uid()) = user_id);
+create policy "trips: 본인 추가" on public.trips
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "trips: 본인 수정" on public.trips
+  for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "trips: 본인 삭제" on public.trips
+  for delete to authenticated using ((select auth.uid()) = user_id);
+```
+- **하위 테이블**: `auth.uid() = user_id`에 더해, 행을 붙이는 `trip_id`도 본인 여행이어야 해요. 외래 키 검사는 RLS를 거치지 않아서, 이 조건이 없으면 남의 여행 id에 행을 끼워 넣을 수 있어요.
+- **`profiles.active_trip_id`**: 트리거가 본인 여행만 가리키게 막아요.
+- **`(select auth.uid())`**: 행마다 다시 계산하지 않고 쿼리당 한 번만 계산해서 빨라요(Supabase 권장 방식).
+- **anon 역할**: 모든 권한을 회수해서, 로그인하지 않은 요청은 테이블을 아예 읽을 수 없어요.
+- **`user_id` 기본값**: `auth.uid()`라서 클라이언트가 보내지 않아도 본인 id가 들어가요. 남의 id를 보내면 `with check`에서 거부돼요.
+
+PGlite(WASM Postgres)에 Supabase의 `auth.uid()`와 역할을 흉내 내고 위 SQL을 적용해 31개 항목을 검증했어요.
+- 가입 트리거, 저장 후 다시 읽었을 때 그대로 돌아오는지, 바뀐 행만 저장되는지, 삭제 · 되돌리기 순서, 여행 삭제 시 하위 행 cascade
+- 다른 사용자의 행 조회 · 수정 · 삭제 · 끼워 넣기 차단, 같은 id로 upsert해 덮어쓰기 차단, anon 접근 차단
+
+### 4. 인증 설정 (대시보드 › Authentication)
+| 항목 | 설정 |
+| --- | --- |
+| **URL Configuration** | Site URL = 배포 주소, Redirect URLs에 `http://localhost:3000/**`와 배포 주소 `/**` 추가 (메일 인증 · Google 로그인 후 돌아올 주소) |
+| **Email** | 기본으로 켜져 있어요. *Confirm email*을 켜 두면 가입 후 메일 링크를 눌러야 로그인돼요(앱이 안내 문구를 보여 줘요) |
+| **Anonymous Sign-Ins** | "데모 여행으로 둘러보기"에 필요해요. 켜면 버튼 한 번에 익명 계정이 만들어지고 샘플 여행이 DB에 채워져요. 익명 계정도 `authenticated` 역할이라 RLS가 똑같이 적용돼요 |
+| **Google** (선택) | Google Cloud에서 OAuth 클라이언트를 만들고, 승인된 리디렉션 URI에 `https://<project-ref>.supabase.co/auth/v1/callback`을 넣은 뒤 Client ID · Secret을 입력해요. 그다음 `NEXT_PUBLIC_SUPABASE_GOOGLE_AUTH=true` |
+
+### 5. 세션 관리
+- **세션 구독**: 앱이 뜨면 `supabase.auth.onAuthStateChange`를 구독해 로그인 · 로그아웃 · 토큰 갱신 · 다른 탭에서의 변화를 Zustand `useSessionStore`에 반영해요.
+- **데이터 캐시**: 계정 데이터 캐시 키가 `['account', user.id]`라서, 사용자가 바뀌면 다른 캐시를 써요. 로그아웃하면 캐시를 지워요.
+- **로그인 상태 유지**: 끄면 세션을 sessionStorage에 둬서 브라우저 탭을 닫으면 로그아웃돼요.
+- **다른 기기 반영**: 창으로 돌아오면 다른 기기에서 바꾼 내용을 다시 가져와요. 저장 중이면 화면에 먼저 반영한 값을 덮지 않도록 건너뛰어요.
+
 ## 실행
 ```bash
 npm install
-npm run dev        # http://localhost:3000 → 데모 여행으로 둘러보기
+cp .env.example .env.local   # Supabase 값 입력 (위 'Supabase 설정')
+npm run dev        # http://localhost:3000 → 회원가입 또는 데모 여행으로 둘러보기
 npm run build      # 프로덕션 빌드 (타입 검사 포함, 라우트별 렌더링 방식 표시)
 npm start          # 빌드 결과 실행
 ```
@@ -149,6 +220,9 @@ npm start          # 빌드 결과 실행
 
 ## 데모 한계 · 향후 과제
 - 항공권/영수증 인식은 실제 OCR 대신 예시 값으로 채워요 → CLOVA OCR / Vision API 연동
-- 인증은 브라우저 저장소 기반 데모 → Firebase/Supabase 백엔드 동기화, 일행 공유
+- 보관함 파일 · 항공권 캡처는 작은 이미지를 data URL로 행 안에 저장해요 → Supabase Storage(사용자별 폴더 + Storage RLS)로 옮기기
+- 이전 버전에서 이 기기 localStorage에 저장한 여행은 자동으로 옮기지 않아요 → 첫 로그인 때 가져오기
+- 다른 기기 변경은 창 포커스 때 다시 불러와요 → Supabase Realtime으로 즉시 반영, 일행과 여행 공유(공유 테이블 + RLS)
+- 익명 데모 계정은 계속 쌓여요 → 오래된 익명 사용자를 지우는 예약 작업(pg_cron)
 - 공유 링크는 서버 저장소 없이 데이터를 URL에 담아요 (긴 일정은 링크가 길어짐) → 백엔드에 저장하고 짧은 ID로 SSR · ISR 재검증
 - 키 없는 임베드 지도는 비공식 방식 → 배포 시 Maps Embed API 키 사용 권장, Places 자동완성 연동

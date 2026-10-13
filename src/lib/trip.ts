@@ -184,7 +184,7 @@ export function seedDemo(name: string): UserDB {
     out: { no: 'ZA 702', seat: '23A', seatType: '창가', gate: '27', board: '08:30', close: '08:50', term: 'T1' },
     back: { no: 'ZA 703', seat: '24A', seatType: '창가', gate: '12', board: '14:40', close: '15:00', term: 'T1' },
   };
-  return { name, email: 'demo@tuddy.app', trips: [t], active: t.id, demo: true };
+  return { name, email: '', trips: [t], active: t.id, demo: true };
 }
 
 // 이전 버전 데이터(x/y 좌표 지도) → 실제 좌표로 옮기기

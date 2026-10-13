@@ -236,7 +236,7 @@ export interface OnboardingDraft extends Omit<NewTripInput, 'budget'> {
   q?: string;
 }
 
-/** 계정별 저장 데이터 */
+/** 계정별 데이터 (Supabase의 profiles + trips + 하위 테이블을 모은 모양) */
 export interface UserDB {
   name: string;
   email: string;
@@ -245,13 +245,6 @@ export interface UserDB {
   demo?: boolean;
 }
 
-export interface UserRecord {
-  /** hash(email:pw) */
-  pw: string;
-  created: number;
-}
-
-export type UserMap = Record<string, UserRecord>;
 
 /* ---------- 파생 값 ---------- */
 export interface DdayInfo {
