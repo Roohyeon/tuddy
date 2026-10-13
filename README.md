@@ -22,17 +22,35 @@
 - Tuddy 로고(핀 + 비행기 궤적)를 SVG로 재구성해 스플래시·로그인·파비콘에 사용 (원본: `image/logo.png`)
 
 ## 기술
-Vanilla HTML / CSS / JavaScript, 빌드 없음 — `index.html` · `styles.css` · `app.js` · `destinations.js`(여행지 데이터) · `config.js`(설정).
-해시 라우팅(`#/home`, `#/schedule` …)으로 뒤로 가기 지원, 데이터는 localStorage에 계정별 저장.
+**Next.js 16 (App Router) · React 19 · TypeScript (strict)** — 데이터는 localStorage에 계정별 저장 (클라이언트 전용).
+
+```
+src/
+├─ app/                      # App Router
+│  ├─ layout.tsx             # 폰트 · 메타데이터 · Provider · 기기 프레임
+│  ├─ page.tsx               # / → 로그인 · 새 여행 · 홈으로 분기
+│  ├─ login/  onboarding/    # 로그인 · 새 여행 만들기
+│  └─ (trip)/                # 여행이 있어야 들어오는 화면 (layout에서 가드)
+│     └─ home/ schedule/ budget/ packing/ vault/ pass/
+├─ components/
+│  ├─ screens/               # 화면 8개 (Auth · Onboarding · Home · Schedule · Budget · Packing · Vault · Pass)
+│  ├─ sheets/                # 바텀 시트 (일정 · 지출 · 바우처 · 탑승권 · 계정 …) + useSheets()
+│  └─ ui/                    # Icon · MapBlock · 탭바/시트/토스트(AppChrome) · Guard · 공용 조각
+├─ lib/                      # destinations(여행지 데이터) · trip(도메인 로직) · map · storage · utils
+├─ store/TuddyProvider.tsx   # 계정 데이터 · 화면 간 UI 상태 · 시트 · 토스트 컨텍스트
+└─ types/domain.ts           # 도메인 타입 (Trip · ScheduleItem · Expense · VaultItem · Flight …)
+```
+이전 Vanilla JS 버전은 `legacy/`에 그대로 보관했어요.
 
 ## 실행
 ```bash
-python -m http.server 5173
+npm install
+npm run dev        # http://localhost:3000 → 데모 여행으로 둘러보기
+npm run build      # 프로덕션 빌드 (타입 검사 포함)
 ```
-브라우저에서 `http://localhost:5173` 접속 → **데모 여행으로 둘러보기**. (GitHub Pages로도 그대로 배포 가능)
 
 ## Google 지도
-기본은 API 키 없이 동작하는 Google 지도 임베드를 사용해요. 일정 좌표로 지도 중심 · 줌을 계산하고, 같은 메르카토르 투영으로 번호 핀과 연결선을 지도 위에 겹쳐 그려요 (그래서 기본 지도는 드래그 대신 핀 · 칩을 눌러 이동해요). 공식 **Maps Embed API**를 쓰려면 `config.js`의 `googleMapsApiKey`에 키를 넣으세요 (공개 배포 시 HTTP 리퍼러 제한 필수).
+기본은 API 키 없이 동작하는 Google 지도 임베드를 사용해요. 일정 좌표로 지도 중심 · 줌을 계산하고, 같은 메르카토르 투영으로 번호 핀과 연결선을 지도 위에 겹쳐 그려요 (그래서 기본 지도는 드래그 대신 핀 · 칩을 눌러 이동해요). 공식 **Maps Embed API**를 쓰려면 `.env.local`에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`를 넣으세요 (`.env.example` 참고) (공개 배포 시 HTTP 리퍼러 제한 필수).
 새로 추가한 장소의 좌표는 OpenStreetMap Nominatim으로 찾고, 못 찾으면 지도에서 장소 이름으로 검색해요.
 
 ## 데모 한계 · 향후 과제
