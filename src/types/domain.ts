@@ -262,3 +262,32 @@ export interface DdayInfo {
 }
 
 export type TabKey = 'home' | 'schedule' | 'budget' | 'packing' | 'vault';
+
+/* ---------- 공유용 여행 기록북 ----------
+   서버에서 렌더링할 수 있도록 여행에서 공개해도 되는 값만 뽑은 요약이에요.
+   (예약번호 · 탑승객 이름 · 첨부 파일 · 메모는 담지 않아요) */
+export interface BookStop {
+  time: string;
+  title: string;
+  type: StopType;
+  area: string;
+}
+
+export interface BookDay {
+  title: string;
+  stops: BookStop[];
+}
+
+export interface TravelBook {
+  v: 1;
+  author: string;
+  dest: DestKey;
+  start: string;
+  end: string;
+  companion: Companion;
+  people: number;
+  days: BookDay[];
+  /** 카테고리별 지출 합계 (원) */
+  spend: [ExpenseCat, number][];
+  vault: number;
+}

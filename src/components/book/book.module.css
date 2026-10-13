@@ -1,0 +1,55 @@
+/* 공유용 여행 기록북 — 앱과 같은 팔레트, 읽기 좋은 단일 컬럼 */
+.page{width:100%;min-height:100%;align-self:start;padding:0 16px 56px;
+  background:linear-gradient(180deg,#c9d8e4 0%,#dfe8ef 260px,#eef2f4 620px,#f5f1ee 100%)}
+.top{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:18px 2px}
+.brand{display:flex;align-items:center;gap:8px;color:var(--navy);text-decoration:none;font-family:var(--f-logo);font-size:20px;font-weight:500}
+.logo{width:26px;height:auto}
+.kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.2em;color:var(--teal)}
+
+.book{max-width:640px;margin:0 auto}
+.cover{position:relative;padding:28px 24px 22px;border-radius:var(--r-lg);color:#fff;overflow:hidden;
+  background:linear-gradient(160deg,#2f4156 0%,#3b5068 55%,#567c8d 100%);box-shadow:var(--shadow-lg)}
+.mono{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;color:rgb(255 255 255 / .72)}
+.title{font-family:var(--f-serif);font-weight:500;font-size:clamp(32px,8vw,44px);line-height:1.15;margin-top:18px}
+.sub{margin-top:6px;color:rgb(255 255 255 / .82);font-size:14px}
+.meta{margin-top:4px;color:rgb(255 255 255 / .72);font-size:13.5px}
+.perf{margin:22px -24px 18px;border-top:2px dashed rgb(255 255 255 / .22)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);margin:0}
+.stats div{min-width:0}
+.stats dt{font-size:12px;color:rgb(255 255 255 / .65)}
+.stats dd{margin:2px 0 0;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.by{margin-top:18px;font-size:12.5px;color:rgb(255 255 255 / .7)}
+
+.h2{font-size:19px;color:var(--navy);margin:34px 4px 12px}
+.day{background:var(--glass-2);border:1px solid var(--glass-line);border-radius:var(--r);padding:18px 18px 14px;box-shadow:var(--shadow);margin-bottom:12px}
+.dayH{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dayN{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.16em;color:var(--teal);font-weight:600}
+.dayDate{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dayTitle{font-size:17px;color:var(--ink);margin-top:4px}
+.stops{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:2px}
+.stops li{display:grid;grid-template-columns:44px 24px 1fr auto;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.stops li:first-child{border-top:0}
+.stops time{font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.dot{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.stopBody{min-width:0;display:flex;flex-direction:column}
+.stopBody b{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.stopBody small{font-size:12px;color:var(--muted)}
+.tag{font-size:11.5px;font-weight:600;color:var(--teal);background:var(--sky-2);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.empty{margin-top:10px;font-size:13.5px;color:var(--muted)}
+
+.stack{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--sky-2)}
+.stack i{display:block;height:100%}
+.legend{list-style:none;margin:12px 0 0;padding:0}
+.legend li{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:10px;padding:7px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.sw{width:10px;height:10px;border-radius:3px}
+.pct{color:var(--muted);font-size:12.5px}
+.note{margin-top:6px;font-size:12px;color:var(--muted)}
+
+.cta{margin-top:30px;text-align:center;display:grid;gap:12px;justify-items:center}
+.cta p{font-size:13.5px;color:var(--ink-2);overflow-wrap:anywhere}
+.ctaBtn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:999px;background:var(--navy);color:#fff;font-weight:600;font-size:14.5px;text-decoration:none;box-shadow:var(--shadow)}
+
+@media (max-width:380px){
+  .stops li{grid-template-columns:40px 22px 1fr}
+  .tag{display:none}
+}

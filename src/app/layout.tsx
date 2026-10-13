@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { TuddyProvider } from '@/store/TuddyProvider';
-import { AppChrome } from '@/components/ui/AppChrome';
+import { SITE_URL } from '@/lib/book';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'Tuddy · 나의 여행 버디',
   description: 'Tuddy — 여행 준비부터 일정, 가계부, 바우처 보관까지 한 곳에서 챙기는 여행 버디',
   icons: {
@@ -19,6 +19,7 @@ export const viewport: Viewport = {
   themeColor: '#c9d8e4',
 };
 
+/** 공통 껍데기 — 앱(CSR)과 공유 기록북(SSR/SSG)이 함께 써요 */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
@@ -27,11 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif:wght@400;500&family=Outfit:wght@400;500&display=swap" rel="stylesheet" />
       </head>
-      <body>
-        <TuddyProvider>
-          <AppChrome>{children}</AppChrome>
-        </TuddyProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

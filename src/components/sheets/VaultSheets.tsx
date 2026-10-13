@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { VaultItem, VaultType } from '@/types/domain';
 import { VKIND } from '@/lib/constants';
+import { buildBook, shareUrl } from '@/lib/book';
 import { readFile, shrink } from '@/lib/files';
 import { compLabel, D, ddayInfo, spent, tripDays, vIcon } from '@/lib/trip';
 import { iso, md, mdw, toDate, today, toMin, uid, won } from '@/lib/utils';
@@ -111,7 +112,15 @@ export function VoucherViewSheet({ id }: { id: string }) {
 
 /** 여행 기록북 미리보기 */
 export function BookSheet() {
-  const t = useTrip(), d = D(t), n = tripDays(t), dd = ddayInfo(t), { closeSheet } = useTuddy();
+  const t = useTrip(), d = D(t), n = tripDays(t), dd = ddayInfo(t), { db, toast } = useTuddy();
+  // 공유 페이지는 서버에서 그려지므로(SSR) 공개해도 되는 요약만 링크에 담아요
+  const url = shareUrl(buildBook(t, db?.name || '여행자'), location.origin);
+  const share = async () => {
+    try {
+      if (navigator.share) { await navigator.share({ title: `${d.city} 여행 기록북`, url }); return; }
+      await navigator.clipboard.writeText(url); toast('기록북 링크를 복사했어요');
+    } catch (e) { if ((e as Error)?.name !== 'AbortError') toast('공유할 수 없어요'); }
+  };
   return <>
     <SheetHead title="여행 기록북" />
     <div className="pass" style={{ padding: 22 }}>
@@ -121,7 +130,10 @@ export function BookSheet() {
       <div className="perf" />
       <div className="fl"><div><label>방문</label><b>{t.schedule.length}곳</b></div><div><label>지출</label><b>{won(spent(t))}</b></div><div><label>보관</label><b>{t.vault.length}개</b></div></div>
     </div>
-    <p className="muted" style={{ fontSize: 13, margin: '14px 4px' }}>{dd.phase === 2 ? '여행이 끝났어요! 기록북을 만들 준비가 됐어요.' : `여행이 끝나면(${md(toDate(t.end))} 이후) 일정 · 지출 · 사진을 한 권으로 묶어드려요. 지금은 미리보기예요.`}</p>
-    <button className="btn primary" onClick={closeSheet}>확인</button>
+    <p className="muted" style={{ fontSize: 13, margin: '14px 4px' }}>{dd.phase === 2 ? '여행이 끝났어요! 링크로 기록북을 공유해 보세요.' : `여행이 끝나면(${md(toDate(t.end))} 이후) 일정 · 지출 · 사진을 한 권으로 묶어드려요. 지금은 미리보기예요.`}</p>
+    <div className="form">
+      <button className="btn primary" onClick={share}><Icon name="share" size="sm" /> 기록북 링크 공유</button>
+      <a className="btn soft" href={url} target="_blank" rel="noopener" style={{ textDecoration: 'none' }}><Icon name="book" size="sm" /> 공유 페이지 미리 보기</a>
+    </div>
   </>;
 }
