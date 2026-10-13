@@ -11,11 +11,10 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
   const items = dayItems(t, day);
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>([0, 0]);
-  const [focus, setFocus] = useState<string | null>(null);
-  const [route, setRoute] = useState(false);
-
-  // 일차가 바뀌면 전체 동선으로
-  useEffect(() => { setFocus(null); setRoute(false); }, [day, t.id]);
+  // 선택한 핀 · 경로 보기는 일차(여행)별 값이에요. 일차가 바뀌면 전체 동선으로 돌아가요
+  const viewKey = `${t.id}:${day}`;
+  const [sel, setSel] = useState({ key: viewKey, focus: null as string | null, route: false });
+  const { focus, route } = sel.key === viewKey ? sel : { focus: null, route: false };
 
   useEffect(() => {
     const el = box.current; if (!el) return;
@@ -29,7 +28,7 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
   const [W, H] = size;
   const f = items.find(s => s.id === focus) || null;
   const view = W && H ? computeMap(t, items, f?.id ?? null, route, W, H) : null;
-  const pick = (id: string | null) => { setFocus(id); setRoute(false); };
+  const pick = (id: string | null) => setSel({ key: viewKey, focus: id, route: false });
   const line = view?.line.map(p => p.join(',')).join(' ');
 
   return (
@@ -51,7 +50,7 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
           ))}
         </svg>
         {!big && items.length > 0 && <button className="expand" onClick={onExpand}><Icon name="expand" size="sm" /> 크게 보기</button>}
-        {big && items.length > 1 && <button className="expand" onClick={() => setRoute(r => !r)}><Icon name="map" size="sm" /> {route ? '번호 동선 보기' : '실제 경로 보기'}</button>}
+        {big && items.length > 1 && <button className="expand" onClick={() => setSel({ key: viewKey, focus, route: !route })}><Icon name="map" size="sm" /> {route ? '번호 동선 보기' : '실제 경로 보기'}</button>}
       </div>
       {items.length > 1 && (
         <div className="map-chips">

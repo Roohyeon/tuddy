@@ -26,6 +26,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* 루트 레이아웃이라 모든 페이지에 적용돼요 (Pages Router용 규칙의 오탐) */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif:wght@400;500&family=Outfit:wght@400;500&display=swap" rel="stylesheet" />
       </head>
       <body>{children}</body>

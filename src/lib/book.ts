@@ -41,7 +41,7 @@ export const shareUrl = (b: TravelBook, origin = SITE_URL) => `${origin}/book/sh
 const STOP_TYPES: StopType[] = ['move', 'stay', 'sight', 'food', 'shop', 'rest'];
 const CATS: ExpenseCat[] = ['flight', 'stay', 'move', 'ins', 'food', 'shop', 'sight', 'etc'];
 const COMPANIONS: Companion[] = ['혼자', '가족', '친구', '연인'];
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TIME_RE = /^\d{2}:\d{2}$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const str = (x: unknown, max: number) => typeof x === 'string' ? x.slice(0, max) : '';
 
 /** 링크로 받은 값은 믿지 않고 하나씩 검사해요. 잘못되면 null */
@@ -61,7 +61,7 @@ export function decodeBook(raw: string | undefined | null): TravelBook | null {
       stops: (Array.isArray(day.stops) ? day.stops : []).slice(0, 30).map(s => {
         const st = (s ?? {}) as Record<string, unknown>;
         return {
-          time: TIME_RE.test(str(st.time, 5)) ? str(st.time, 5) : '',
+          time: typeof st.time === 'string' && TIME_RE.test(st.time) ? st.time : '',
           title: str(st.title, 40),
           type: STOP_TYPES.includes(st.type as StopType) ? st.type as StopType : 'sight',
           area: str(st.area, 30),

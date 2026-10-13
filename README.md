@@ -62,6 +62,7 @@
 | SSR | 비동기 `searchParams`를 읽는 서버 컴포넌트, `generateMetadata`(OG · Twitter · robots), Route Handler + `next/og` `ImageResponse` |
 | CSR | `'use client'` 컴포넌트, 클라이언트 라우트 가드 |
 | 백엔드 | **Supabase** — Auth(이메일 · Google · 익명), Postgres, RLS (`supabase/migrations`) |
+| 품질 · 배포 | ESLint(`eslint-config-next`), Vitest, **GitHub Actions** CI, **Vercel** (Preview · Production) |
 | 서버 상태 | **TanStack Query v5** — 계정 조회 · 저장 뮤테이션, 로그인 · 회원가입, 실시간 환율, 장소 좌표 |
 | 클라이언트 상태 | **Zustand v5** — 세션, 화면 선택 값, 바텀 시트, 토스트 |
 | 스타일 | 전역 CSS(앱, 기존 디자인 그대로) + CSS Modules(기록북) |
@@ -209,10 +210,64 @@ cp .env.example .env.local   # Supabase 값 입력 (위 'Supabase 설정')
 npm run dev        # http://localhost:3000 → 회원가입 또는 데모 여행으로 둘러보기
 npm run build      # 프로덕션 빌드 (타입 검사 포함, 라우트별 렌더링 방식 표시)
 npm start          # 빌드 결과 실행
+
+npm run typecheck  # tsc --noEmit
+npm run lint       # ESLint (eslint-config-next + TypeScript, 경고도 실패로 처리)
+npm test           # Vitest 단위 테스트 (변경분 계산 · 공유 링크 검증 · UUID v7)
 ```
 - 샘플 기록북 (SSG): http://localhost:3000/book/tokyo-4days
 - 내 기록북 공유 (SSR): 앱 → 보관함 → **여행 기록북** → *기록북 링크 공유* / *공유 페이지 미리 보기*
-- 배포할 때는 `.env.local`에 `NEXT_PUBLIC_SITE_URL`을 넣어 주세요. 공유 링크 · OG 이미지 · sitemap의 절대 URL에 쓰여요.
+- 배포할 때는 `NEXT_PUBLIC_SITE_URL`을 넣어 주세요. 공유 링크 · OG 이미지 · sitemap의 절대 URL에 쓰여요.
+
+## 배포 · CI
+| | 담당 | 언제 | 하는 일 |
+| --- | --- | --- | --- |
+| **CI** | GitHub Actions (`.github/workflows/ci.yml`) | `main` 대상 PR 생성 · 커밋 push, `main` push | 코드가 합쳐져도 되는지 검증: 타입 검사 → 린트 → 테스트 → 프로덕션 빌드. 하나라도 실패하면 PR에 ✗가 떠요 |
+| **CD** | Vercel (GitHub 연동) | PR마다 · `main` 병합 | 실제 배포: PR은 **Preview** URL, `main`은 **Production** 도메인 |
+
+CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내는 일"을 맡아요. Vercel도 배포할 때 빌드를 하지만 린트 · 테스트는 돌리지 않으므로, 둘을 함께 써요.
+
+### CI 설정 요약
+- **Node 22**: `.nvmrc`와 `package.json`의 `engines`로 고정해서 로컬 · CI · Vercel이 같은 버전을 써요.
+- **설치**: `npm ci`로 `package-lock.json`과 똑같이 설치하고, `setup-node`의 npm 캐시로 내려받는 시간을 줄여요. `.next/cache`도 캐시해요.
+- **concurrency**: 같은 PR에 새 커밋이 오면 이전 실행을 취소해요. `main` push는 취소하지 않아요.
+- **권한**: `permissions: contents: read`로 토큰 권한을 최소로 줄였어요.
+- **보호 규칙(권장)**: GitHub Settings › Branches › `main` 규칙에서 **Require status checks to pass** → `Typecheck · Lint · Test · Build`를 켜면, CI가 통과한 PR만 병합할 수 있어요.
+
+### CI 빌드에 Supabase 값 전달 (GitHub Secrets)
+`NEXT_PUBLIC_` 값은 빌드할 때 번들에 들어가서, 실제 배포와 같은 조건으로 빌드하려면 CI에도 넘겨야 해요.
+1. GitHub 저장소 › **Settings › Secrets and variables › Actions** › *New repository secret*
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+2. (선택) 같은 화면의 **Variables** 탭에 `NEXT_PUBLIC_SITE_URL`
+3. 워크플로는 빌드 단계에서만 `${{ secrets.… }}`로 받아요. 값을 코드에 쓰지 않고, Actions 로그에는 `***`로 가려져요.
+   - 값을 `echo`하지 마세요.
+   - 포크에서 온 PR에는 Secrets가 전달되지 않아요. 이때는 빈 값으로 빌드되고, 앱은 설정 안내 화면을 보여 줘요. 빌드 검증은 그대로 통과해요.
+
+### Vercel 배포
+1. **저장소 연결**: [vercel.com/new](https://vercel.com/new)에서 *Continue with GitHub*를 고르고 `tuddy` 저장소를 **Import**해요. 처음이면 Vercel GitHub App에 저장소 접근을 허용해요.
+2. **프로젝트 설정**: Framework Preset은 **Next.js**로 자동 인식돼요. Build Command(`next build`), Output, Install Command(`npm ci`)는 기본값 그대로 두면 돼요. Node 버전은 `engines`(22.x)를 따라가요.
+3. **환경 변수**: 같은 화면의 *Environment Variables*에 아래 값을 넣고 **Deploy**해요. 나중에는 Project › **Settings › Environment Variables**에서 바꿀 수 있어요.
+
+   | Key | Production | Preview | Development |
+   | --- | :---: | :---: | :---: |
+   | `NEXT_PUBLIC_SUPABASE_URL` | ✓ | ✓ | ✓ |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | ✓ | ✓ |
+   | `NEXT_PUBLIC_SITE_URL` | 운영 도메인 | (비움 또는 Preview 주소) | |
+   | `NEXT_PUBLIC_SUPABASE_GOOGLE_AUTH` | 필요할 때 `true` | 필요할 때 `true` | |
+4. **자동 배포**: 연결이 끝나면 따로 설정하지 않아도 이렇게 동작해요.
+   - **PR을 열거나 커밋을 push하면 → Preview Deployment.** PR마다 고유 URL이 생기고, Vercel 봇이 PR에 링크를 댓글로 달아요. 리뷰어가 실제 화면을 열어 볼 수 있어요.
+   - **`main`에 병합(push)하면 → Production Deployment.** 운영 도메인(`<project>.vercel.app` 또는 연결한 도메인)이 새 버전으로 바뀌어요. 문제가 생기면 Deployments에서 이전 배포를 **Promote / Instant Rollback**으로 되돌릴 수 있어요.
+5. **Supabase 설정**: Supabase 대시보드 › Authentication › URL Configuration에 배포 주소를 추가해요.
+   - **Site URL**: `https://<운영 도메인>`
+   - **Redirect URLs**: `https://<운영 도메인>/**`와 Preview용 `https://*-<team>.vercel.app/**`
+
+### 환경별 환경 변수 · 주의사항
+- **환경 구분**: Production은 운영 배포, Preview는 PR · `main` 외 브랜치 배포, Development는 `vercel env pull`로 로컬에 받을 때 쓰여요. 같은 Key라도 환경마다 값을 다르게 둘 수 있어요(예: Preview는 스테이징용 Supabase 프로젝트).
+- **바꾼 뒤에는 재배포**: `NEXT_PUBLIC_` 값은 빌드할 때 코드에 박혀요. 환경 변수를 바꾸면 Deployments › *Redeploy*로 다시 빌드해야 반영돼요.
+- **공개 값과 비밀 값 구분**: `NEXT_PUBLIC_`이 붙은 값은 브라우저 번들에 그대로 공개돼요. Supabase anon(publishable) 키는 공개를 전제로 만든 키이고, 데이터는 RLS가 지켜요. `service_role` / secret 키처럼 RLS를 우회하는 키는 절대 `NEXT_PUBLIC_`으로 넣지 마세요.
+- **Preview는 다른 사람도 열 수 있어요**: Preview가 운영 DB를 쓰면 리뷰 중 만든 데이터가 운영에 쌓여요. 가능하면 Preview에는 별도 Supabase 프로젝트를 쓰고, 필요하면 Vercel의 *Deployment Protection*으로 Preview 접근을 제한해요.
+- **`.env.local`은 커밋하지 않아요** (`.gitignore`). 로컬 값은 `vercel env pull .env.local`로 Vercel에서 받아 올 수 있어요.
 
 ## Google 지도
 기본은 API 키 없이 동작하는 Google 지도 임베드를 사용해요. 일정 좌표로 지도 중심 · 줌을 계산하고, 같은 메르카토르 투영으로 번호 핀과 연결선을 지도 위에 겹쳐 그려요 (그래서 기본 지도는 드래그 대신 핀 · 칩을 눌러 이동해요). 공식 **Maps Embed API**를 쓰려면 `.env.local`에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`를 넣으세요 (`.env.example` 참고) (공개 배포 시 HTTP 리퍼러 제한 필수).

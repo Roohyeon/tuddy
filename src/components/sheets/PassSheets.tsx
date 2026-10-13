@@ -54,6 +54,8 @@ export function CaptureSheet({ file }: { file: File }) {
       });
     })();
     return () => { alive = false; };
+    // 올린 파일마다 한 번만 인식해요 (여행 값이 바뀌어도 다시 인식하지 않음)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
   const apply = () => {

@@ -11,21 +11,33 @@ import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
 
-/** 예약번호로 만든 장식용 QR */
-function QR({ seed }: { seed: string }) {
-  const N = 25; let s = parseInt(hash(seed || 'tuddy'), 36) || 7;
+const QR_N = 25;
+
+/** 예약번호로 정해지는 QR 칸 (같은 예약번호면 늘 같은 무늬) */
+function qrCells(seed: string) {
+  const N = QR_N; let s = parseInt(hash(seed || 'tuddy'), 36) || 7;
   const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const finder = (x: number, y: number) => (x < 7 && y < 7) || (x >= N - 7 && y < 7) || (x < 7 && y >= N - 7);
   const cells: [number, number][] = [];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { if (finder(x, y)) continue; if (rnd() > .52) cells.push([x, y]); }
-  const F = ({ x, y }: { x: number; y: number }) => <>
+  return cells;
+}
+
+/** QR 모서리 위치 표시 */
+function Finder({ x, y }: { x: number; y: number }) {
+  return <>
     <rect x={x + .5} y={y + .5} width="6" height="6" rx="1.4" fill="none" stroke="#2f4156" strokeWidth="1" />
     <rect x={x + 2} y={y + 2} width="3" height="3" rx=".6" />
   </>;
+}
+
+/** 예약번호로 만든 장식용 QR */
+function QR({ seed }: { seed: string }) {
+  const N = QR_N, cells = qrCells(seed);
   return (
     <svg viewBox={`0 0 ${N} ${N}`} fill="#2f4156" shapeRendering="crispEdges" role="img" aria-label="탑승권 QR 코드">
       {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1.02" height="1.02" />)}
-      <F x={0} y={0} /><F x={N - 7} y={0} /><F x={0} y={N - 7} />
+      <Finder x={0} y={0} /><Finder x={N - 7} y={0} /><Finder x={0} y={N - 7} />
     </svg>
   );
 }

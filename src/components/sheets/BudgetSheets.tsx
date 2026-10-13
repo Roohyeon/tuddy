@@ -41,6 +41,8 @@ export function ExpenseSheet({ id, scan }: { id?: string; scan?: File }) {
       setOcr({ img, done: { name, amt } });
     })();
     return () => { alive = false; };
+    // 올린 파일마다 한 번만 인식해요 (여행 값이 바뀌어도 다시 인식하지 않음)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scan]);
 
   const amt = parseFloat(amount) || 0;

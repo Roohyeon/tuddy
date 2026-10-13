@@ -1,0 +1,72 @@
+# =========================================================
+# CI — main으로 가는 PR과 main push마다 타입 · 린트 · 테스트 · 빌드를 검증해요.
+# 배포(CD)는 Vercel의 GitHub 연동이 맡아요 (README '배포 · CI' 참고).
+# =========================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    # 기본값(opened · synchronize · reopened)에 ready_for_review를 더해 Draft → Ready 전환 때도 검증해요
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+# 같은 PR(또는 브랜치)에 새 커밋이 오면 이전 실행을 취소해요.
+# main push는 취소하지 않아 커밋마다 결과가 남아요.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# GITHUB_TOKEN은 저장소 읽기만 (최소 권한)
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js (.nvmrc → 22)
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm   # ~/.npm을 package-lock.json 해시로 캐시해요
+
+      - name: Install dependencies (lockfile 기준)
+        run: npm ci
+
+      - name: 1. Typecheck
+        run: npm run typecheck
+
+      - name: 2. Lint
+        run: npm run lint
+
+      - name: 3. Test
+        run: npm test
+
+      # Next.js 증분 빌드 캐시 — 소스가 같으면 다음 빌드가 빨라져요
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts', 'tsconfig.json') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: 4. Build (production)
+        run: npm run build
+        env:
+          # NEXT_PUBLIC_ 값은 빌드할 때 번들에 들어가요. 저장소 Secrets에서 이 단계에만 넘겨요.
+          # Secrets가 없는 실행(포크 PR 등)에서는 빈 값으로 빌드되고, 앱은 "Supabase 연결이 필요해요" 안내를 보여 줘요.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
