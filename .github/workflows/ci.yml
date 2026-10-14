@@ -50,8 +50,8 @@ jobs:
       - name: 2. Lint
         run: npm run lint
 
-      - name: 3. Test
-        run: npm test
+      - name: 3. Test (+ 커버리지 바닥선)
+        run: npm run test:coverage
 
       # Next.js 증분 빌드 캐시 — 소스가 같으면 다음 빌드가 빨라져요
       - name: Restore Next.js build cache
