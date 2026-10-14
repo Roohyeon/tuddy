@@ -1,0 +1,67 @@
+/* 실시간 시스템 모니터링 — 앱과 같은 팔레트, 넓은 화면용 단일 컬럼 */
+.page{width:100%;max-width:1080px;min-height:100%;align-self:start;margin:0 auto;padding:28px 16px 56px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.kicker{font-family:var(--f-mono);font-size:11px;letter-spacing:.2em;color:var(--teal)}
+.h1{font-size:clamp(22px,4vw,28px);color:var(--navy);margin-top:4px}
+.lede{margin-top:6px;font-size:13.5px;color:var(--ink-2);max-width:60ch}
+.diag{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* 도구 막대 — 필터 · 제어는 차트 위 한 줄 */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:22px 0 14px}
+.btn,.btnGhost{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:600}
+.btn{background:var(--navy);color:#fff;box-shadow:var(--shadow)}
+.btn svg{width:14px;height:14px}
+.btnResume{background:var(--teal)}
+.btnGhost{background:var(--glass-2);color:var(--navy);border:1px solid var(--line)}
+.live{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;padding:2px 7px;border-radius:999px;background:rgb(255 255 255 / .16);display:inline-flex;align-items:center;gap:5px}
+.live::before{content:"";width:6px;height:6px;border-radius:50%;background:#7fd1ae;animation:blink 1.6s ease-in-out infinite}
+.livePaused::before{background:#e7b98d;animation:none}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.live::before{animation:none}}
+
+.segment{display:inline-flex;padding:3px;border-radius:999px;background:var(--glass-2);border:1px solid var(--line)}
+.segment button{height:30px;padding:0 13px;border-radius:999px;font-size:13px;color:var(--ink-2)}
+.segment button[aria-pressed=true]{background:var(--navy);color:#fff;font-weight:600}
+
+.zoom{display:inline-flex;align-items:center;gap:6px;padding:3px 3px 3px 6px;border-radius:999px;background:var(--sky-2)}
+.zoomRange{font-size:13px;color:var(--navy);font-variant-numeric:tabular-nums;padding:0 4px}
+.zoomRange small{color:var(--muted)}
+.iconBtn{width:30px;height:30px;border-radius:50%;font-size:18px;line-height:1;color:var(--navy);background:var(--glass-2)}
+.zoom .btnGhost{height:30px;font-size:13px}
+
+.meter{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter>i{display:block;width:72px;height:6px;border-radius:999px;background:var(--sky-2);overflow:hidden}
+.meter>i>i{display:block;height:100%;background:var(--teal-2);border-radius:999px;transition:width .3s}
+
+/* 최신 값 타일 */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.stat{position:relative;background:var(--glass-2);border:1px solid var(--glass-line);border-radius:var(--r-sm);padding:14px 16px;box-shadow:var(--shadow)}
+.statLabel{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.statValue{display:block;margin-top:4px;font-size:clamp(22px,4vw,28px);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
+.statValue small{font-size:13px;font-weight:500;color:var(--muted);margin-left:4px}
+.statFoot{grid-column:1/-1;font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.level{position:absolute;top:12px;right:12px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+.level::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.ok{color:var(--ok);background:rgb(63 127 106 / .1)}
+.warn{color:var(--warn);background:rgb(176 120 72 / .12)}
+.danger{color:var(--danger);background:rgb(192 87 75 / .12)}
+
+/* 차트 카드 */
+.charts{display:grid;gap:12px}
+.card{background:var(--glass-2);border:1px solid var(--glass-line);border-radius:var(--r);padding:14px 14px 8px;box-shadow:var(--shadow)}
+.cardHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 4px 6px}
+.cardTitle{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--navy)}
+.unit{font-size:12px;font-weight:500;color:var(--muted)}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none}
+.chart{height:200px;user-select:none;cursor:crosshair}
+.chart :global(.recharts-surface:focus),.chart :global(.recharts-wrapper:focus){outline:none}
+
+@media (max-width:640px){
+  .stats{grid-template-columns:1fr}
+  .stat{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px 14px}
+  .stat .level{position:static}
+  .statValue{margin:0 0 0 auto}
+  .meter{margin-left:0}
+  .top .diag{display:none}
+  .chart{height:180px}
+}
