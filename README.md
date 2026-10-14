@@ -264,6 +264,7 @@ npm start          # 빌드 결과 실행
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint (eslint-config-next + TypeScript, 경고도 실패로 처리)
 npm test           # Vitest 단위 테스트 (= npm run test:unit)
+npm run test:coverage  # 단위 테스트 + 커버리지 (coverage/index.html)
 npm run test:e2e   # Playwright E2E (로컬 Supabase 필요 — 아래 '테스트')
 npm run test:all   # 단위 + E2E
 ```
@@ -271,8 +272,16 @@ npm run test:all   # 단위 + E2E
 ### 테스트
 | | 범위 | 실행 |
 | --- | --- | --- |
-| **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
-| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 | `npm run db:start` 후 `npm run test:e2e` |
+| **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 체크리스트 분류 추천(`guessCat`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 | `npm run db:start` 후 `npm run test:e2e` |
+
+**단위 테스트 커버리지** (v8, 순수 로직 `src/lib` · `src/api/rows.ts` 기준 — 화면 · 훅 · Supabase 호출은 E2E가 맡아요)
+
+| Lines | Statements | Functions | Branches |
+| --- | --- | --- | --- |
+| 81% | 73% | 69% | 57% |
+
+`vitest.config.mts`에 바닥선(lines 80 · statements 70 · functions 65 · branches 55%)을 두어, 테스트 없이 로직이 늘어나면 CI가 실패해요. 아직 테스트가 없는 곳은 `lib/map.ts`(지도 투영) · `lib/files.ts` · `lib/destinations.ts` 검색이에요.
 
 - E2E는 **로컬 Supabase**(Docker)에서만 돌아요. `supabase/migrations`가 그대로 적용되고, 로컬은 이메일 인증이 꺼져 있어 가입 직후 바로 로그인돼요. 운영 프로젝트 주소가 들어오면 실행을 거부하고, 테스트 중 `*.supabase.co`로 나가는 요청도 막아요.
 - 매 실행마다 `e2e-<시각>-<난수>@e2e.tuddy.test` 계정을 새로 만들고, 끝나면 그 도메인 계정만 지워요 (여행 · 지출은 cascade로 함께 삭제).
