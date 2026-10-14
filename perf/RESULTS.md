@@ -99,3 +99,33 @@
 
 - 확실한 개선: 앱 화면 FCP(−1.4s), 앱 화면 초기 JS(−4%).
 - 미확정: next/font 전환 뒤 공개 페이지(로그인 · 기록북 · 모니터)의 LCP 악화 → 로컬 HTTP/1.1 영향으로 추정, Vercel Preview(HTTP/2)에서 재측정 필요.
+
+### preview-next-font — https://tuddy-ebrgnhjzy-tuddy1.vercel.app · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | preview-next-font | 77 | 3.77s | 1.36s | 0.002 | 443ms | 3.21s | 248 | 170 | 456 | 34 |
+| /book/tokyo-4days | preview-next-font | 93 | 1.81s | 1.10s | 0.000 | 260ms | 1.10s | 249 | 310 | 605 | 53 |
+| /monitor | preview-next-font | 77 | 2.27s | 1.21s | 0.000 | 927ms | 2.00s | 246 | 227 | 513 | 41 |
+
+### prod-google-fonts-2 — https://tuddy-gold.vercel.app · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | prod-google-fonts-2 | 76 | 4.48s | 3.03s | 0.000 | 144ms | 3.71s | 242 | 166 | 475 | 30 |
+| /book/tokyo-4days | prod-google-fonts-2 | 91 | 2.41s | 1.88s | 0.000 | 262ms | 1.88s | 243 | 304 | 621 | 49 |
+| /monitor | prod-google-fonts-2 | 73 | 2.86s | 1.89s | 0.023 | 876ms | 2.58s | 243 | 222 | 533 | 38 |
+
+## 배포 환경(HTTP/2) 비교 — Vercel Preview(next/font · 1~3단계) vs 운영(Google Fonts)
+
+같은 시간대에 연달아 5회씩 측정했어요 (공개 페이지만, Preview는 Protection Bypass 헤더 사용).
+
+| 페이지 | LCP (운영 → Preview) | FCP (운영 → Preview) | 폰트 |
+| --- | --- | --- | --- |
+| /login | 4.48 → **3.77s** (−16%) | 3.03 → **1.36s** (−55%) | 166 → 170KB |
+| /book/tokyo-4days | 2.41 → **1.81s** (−25%) | 1.88 → **1.10s** (−41%) | 304 → 310KB |
+| /monitor | 2.86 → **2.27s** (−21%) | 1.89 → **1.21s** (−36%) | 222 → 227KB |
+
+- **결론: next/font 유지.** 로컬에서의 LCP 악화는 HTTP/1.1 서버에서 같은 출처 폰트 조각과 JS가 연결 6개를 나눠 쓰는 측정 환경 문제였어요. HTTP/2인 Vercel에서는 외부 CSS(렌더링 차단)와 다른 출처 연결이 사라진 효과가 그대로 나타나요.
+- TBT는 이번 회차에 양쪽 모두 높게 나왔어요(측정 PC 부하). 같은 회차의 운영과 Preview 차이는 오차 범위예요.
+- 앱 화면은 Preview에서 재지 않았어요(데모 로그인이 Preview DB에 계정을 만들어요).

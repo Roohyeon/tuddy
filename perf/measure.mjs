@@ -3,6 +3,7 @@
    사용: node perf/measure.mjs --label baseline [--runs 3] [--no-build] [--url https://배포주소]
    - 기본: 로컬 Supabase(`npm run db:start`)로 프로덕션 빌드 → next start → 공개 페이지 + 데모 로그인 후 앱 화면
    - --url: 이미 떠 있는 서버(배포 주소)의 공개 페이지만 재요 (운영 DB에 데모 계정을 만들지 않도록)
+     Vercel Preview는 VERCEL_AUTOMATION_BYPASS_SECRET 환경 변수로 접근 보호를 우회해요
    결과: perf/results/<label>.json (원본 수치) · perf/RESULTS.md (중앙값 표 누적)
    ========================================================= */
 import { execSync, spawn } from 'node:child_process';
@@ -53,6 +54,10 @@ async function startServer() {
 }
 
 /* ---------- 측정 ---------- */
+// Vercel Preview 접근 보호 우회 (Settings › Deployment Protection › Protection Bypass for Automation)
+// 토큰은 .env.perf.local 등 커밋하지 않는 곳에 두고 환경 변수로 넘겨요
+const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+const extraHeaders = bypass ? { 'x-vercel-protection-bypass': bypass, 'x-vercel-set-bypass-cookie': 'true' } : undefined;
 const median = xs => { const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 function pick(lhr) {
@@ -75,7 +80,7 @@ function pick(lhr) {
 async function audit(page, url, keepSession) {
   // 앱 화면은 세션(localStorage)을 지키면서 캐시만 비워 매번 콜드 로드로 재요
   if (keepSession) { const c = await page.createCDPSession(); await c.send('Network.clearBrowserCache'); await c.detach(); }
-  const r = await lighthouse(url, { output: 'json', logLevel: 'error', onlyCategories: ['performance'], disableStorageReset: keepSession }, undefined, page);
+  const r = await lighthouse(url, { output: 'json', logLevel: 'error', onlyCategories: ['performance'], disableStorageReset: keepSession, extraHeaders }, undefined, page);
   return pick(r.lhr);
 }
 
