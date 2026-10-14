@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { SITE_URL } from '@/lib/book';
+import { WebVitals } from '@/components/WebVitals';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif:wght@400;500&family=Outfit:wght@400;500&display=swap" rel="stylesheet" />
       </head>
-      <body>{children}</body>
+      <body><WebVitals />{children}</body>
     </html>
   );
 }
