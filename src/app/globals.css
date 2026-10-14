@@ -397,6 +397,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 .err{color:var(--danger);font-size:13px;min-height:1em}
 .scan-box{border-radius:18px;border:1.5px dashed #b6c6d3;padding:18px;display:flex;align-items:center;gap:14px;background:#fff;font-size:13.5px;color:var(--ink-2)}
 .scan-box img{width:56px;height:56px;object-fit:cover;border-radius:12px}
+.sheet-loading{display:grid;place-items:center;min-height:200px}
 .spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--sky);border-top-color:var(--navy);animation:spin .8s linear infinite;flex:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .preview{border-radius:18px;overflow:hidden;background:#fff;border:1px solid #e3e9ee}

@@ -52,3 +52,20 @@
 > - `1-next-font`: `subsets: ['latin']`이어도 IBM Plex Sans KR의 **한글 조각 280여 개가 모두 preload**돼 폰트 2.5MB · 요청 300개 → LCP 21s. preload를 끈 `1b`가 실제 적용안이에요.
 > - `1b`: 렌더링을 막던 외부 CSS가 사라져 **FCP 2.88s → 1.51s**(앱 화면). 하지만 LCP는 나빠졌어요(기록북 2.23s → 4.22s, 홈 4.70s → 6.17s).
 > - 추정 원인: 로컬 `next start`는 HTTP/1.1이라 같은 출처로 옮긴 폰트 조각이 JS와 연결 6개를 나눠 써요. 예전엔 `fonts.gstatic.com`(HTTP/2, 별도 연결)이었어요. 운영(`prod-google-fonts`)이 로컬 기준선과 비슷한 걸 보면 로컬 측정이 HTTP 프로토콜 차이를 반영하지 못할 수 있어요 → **Vercel Preview(HTTP/2)에서 재측정해 유지 여부를 결정**해요.
+
+### 2-lazy-sheets — 로컬 프로덕션 빌드 · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | 2-lazy-sheets | 85 | 4.20s | 1.51s | 0.000 | 105ms | 2.80s | 243 | 171 | 489 | 33 |
+| /book/tokyo-4days | 2-lazy-sheets | 79 | 4.07s | 3.46s | 0.000 | 0ms | 3.46s | 244 | 312 | 639 | 52 |
+| /monitor | 2-lazy-sheets | 78 | 4.51s | 3.17s | 0.000 | 143ms | 3.17s | 244 | 228 | 549 | 40 |
+| /home | 2-lazy-sheets | 75 | 6.03s | 1.51s | 0.000 | 148ms | 3.68s | 281 | 395 | 788 | 93 |
+| /schedule | 2-lazy-sheets | 73 | 5.72s | 1.51s | 0.000 | 196ms | 4.47s | 281 | 380 | 1385 | 144 |
+| /budget | 2-lazy-sheets | 76 | 5.42s | 1.51s | 0.000 | 183ms | 3.29s | 281 | 268 | 661 | 82 |
+| /vault | 2-lazy-sheets | 78 | 5.57s | 1.50s | 0.000 | 86ms | 2.90s | 281 | 278 | 671 | 82 |
+
+> 2단계 메모 (시트 지연 로딩)
+> - 초기 JS(gzip, `perf/initial-js.mjs`): 홈 290.9 → 279.1KB(−12KB, −4%), 일정 · 가계부 · 보관함 · 탑승권도 −11~12KB. 시트를 쓰지 않는 체크리스트 · 로그인은 `next/dynamic` 런타임으로 +2KB.
+> - Lighthouse JS 전송량은 267 → 281KB로 늘었어요: 화면이 뜬 뒤 한가할 때 시트를 미리 받는(prefetch) 양까지 측정 구간에 잡혀서예요. LCP · TBT 변화는 측정 오차 범위 안이에요 → **효과 작음**.
+> - 앱 초기 JS의 가장 큰 덩어리는 supabase-js(+ 쓰지 않는 Realtime 클라이언트) · React Query 청크(86KB gzip)예요.

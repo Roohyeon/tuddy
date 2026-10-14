@@ -11,6 +11,7 @@ import { useSessionStore } from '@/stores/session';
 import { useSheetStore } from '@/stores/sheet';
 import { useToastStore } from '@/stores/toast';
 import { useUIStore } from '@/stores/ui';
+import { prefetchSheets } from '@/components/sheets/lazy';
 import { Icon, Logo } from './Icon';
 import { Empty } from './common';
 
@@ -21,6 +22,14 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const { ready, error, retry } = useAccount();
   useAppEffects(pathname);
   const ok = ready && !error, nav = ok && NAV_ROUTES.includes(pathname);
+  // 앱 화면이 그려진 뒤 한가할 때 시트 코드를 미리 받아요 → 첫 시트를 열 때 기다리지 않아요
+  useEffect(() => {
+    if (!nav) return;
+    const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 2000));
+    const cic = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = ric(prefetchSheets, { timeout: 5000 });
+    return () => cic(id);
+  }, [nav]);
   return (
     <div className={cx('device', !nav && 'no-nav')} id="app">
       <div id="view">

@@ -3,12 +3,11 @@
 import { useMemo } from 'react';
 import { pickFile } from '@/lib/files';
 import { useSheetStore } from '@/stores/sheet';
-import { AlertsSheet, TripsSheet } from './AccountSheets';
-import { BudgetSheet, ExpenseSheet } from './BudgetSheets';
-import { DdaySheet, PackSheet } from './ChecklistSheets';
-import { CaptureSheet, FlightSheet, PassImageSheet } from './PassSheets';
-import { DatesSheet, MapSheet, RenameDaySheet, SchedSheet } from './ScheduleSheets';
-import { BookSheet, VoucherSaveSheet, VoucherViewSheet } from './VaultSheets';
+// 시트는 지연 로딩해요 (lazy.tsx) — 이 훅을 쓰는 화면의 초기 JS에 시트 코드가 들어가지 않아요
+import {
+  AlertsSheet, BookSheet, BudgetSheet, CaptureSheet, DatesSheet, DdaySheet, ExpenseSheet, FlightSheet, MapSheet,
+  PackSheet, PassImageSheet, RenameDaySheet, SchedSheet, TripsSheet, VoucherSaveSheet, VoucherViewSheet,
+} from './lazy';
 
 export function useSheets() {
   const openSheet = useSheetStore(s => s.openSheet), closeSheet = useSheetStore(s => s.closeSheet);
