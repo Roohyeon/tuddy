@@ -21,6 +21,7 @@
 | **체크리스트** | 진행률, 준비물/출국 당일 탭, 입력하면 분류 자동 추천, 체크·삭제(되돌리기) |
 | **보관함** | 검색, 바우처(이미지·PDF) 업로드 및 일정 연결, 영수증 스캔 → 가계부 자동 기록, 오프라인 열람, 여행 기록북 미리보기 · 공유 링크 |
 | **공유용 여행 기록북** | 로그인 없이 링크로 보는 여행 요약 페이지 — 표지, 일자별 동선, 카테고리별 지출, SNS 미리보기 이미지 (SSR/SSG) |
+| **여행지 관리 (어드민)** | `/admin` — 37개국 · 80개 도시 카탈로그 검색 · 필터 · 정렬, 모달 폼으로 등록 · 수정 · 삭제. react-hook-form + zod 실시간 검증, 서버 응답 전에 바로 반영(낙관적 업데이트) · 실패하면 그 항목만 되돌림, 동시 수정 충돌 감지. 관리자만 쓸 수 있어요(DB RLS) |
 
 ## 디자인
 - 컬러: Navy `#2F4156` · Teal `#567C8D` · Sky Blue `#C8D9E6` · Beige `#F5EFEB` · White
@@ -38,6 +39,7 @@
 | 공유 링크 OG 이미지 | `/book/share/og?d=…` | **SSR**: Route Handler에서 `ImageResponse`로 생성 | ƒ Dynamic |
 | sitemap | `/sitemap.xml` | 정적 생성 (샘플 기록북만 포함) | ○ Static |
 | 실시간 모니터링 | `/monitor` | **CSR**: 정적 껍데기 + 브라우저에서 모의 데이터 생성 · 차트 렌더링 (아래 [실시간 시스템 모니터링](#실시간-시스템-모니터링-monitor)) | ○ Static 껍데기 + CSR |
+| 여행지 관리 (어드민) | `/admin` | **CSR**: 관리자 로그인 후 브라우저가 Supabase `destinations` 테이블을 읽고 써요 | ○ Static 껍데기 + CSR |
 | 앱 화면 | `/login` `/onboarding` `/home` `/schedule` `/budget` `/packing` `/vault` `/pass` | **CSR**: 빈 앱 껍데기만 정적으로 받고, 데이터는 브라우저가 Supabase에서 받아 그림 | ○ Static 껍데기 + CSR |
 
 ### 1. 공유용 여행 기록북에 SSR/SSG를 적용한 이유
@@ -246,6 +248,7 @@ PGlite(WASM Postgres)에 Supabase의 `auth.uid()`와 역할을 흉내 내고 위
 | **Email** | 기본으로 켜져 있어요. *Confirm email*을 켜 두면 가입 후 메일 링크를 눌러야 로그인돼요(앱이 안내 문구를 보여 줘요) |
 | **Anonymous Sign-Ins** | "데모 여행으로 둘러보기"에 필요해요. 켜면 버튼 한 번에 익명 계정이 만들어지고 샘플 여행이 DB에 채워져요. 익명 계정도 `authenticated` 역할이라 RLS가 똑같이 적용돼요 |
 | **Google** (선택) | Google Cloud에서 OAuth 클라이언트를 만들고, 승인된 리디렉션 URI에 `https://<project-ref>.supabase.co/auth/v1/callback`을 넣은 뒤 Client ID · Secret을 입력해요. 그다음 `NEXT_PUBLIC_SUPABASE_GOOGLE_AUTH=true` |
+| **관리자 지정** (`/admin`) | 가입한 계정에 SQL Editor에서 `update auth.users set raw_app_meta_data = raw_app_meta_data \|\| '{"role":"admin"}' where email = '<메일>';` → 그 계정으로 **다시 로그인**해야 토큰에 role이 들어가요. role은 사용자가 바꿀 수 없는 `app_metadata`에 있고, `destinations` 쓰기는 RLS(`public.is_admin()`)가 막아요 |
 
 ### 5. 세션 관리
 - **세션 구독**: 앱이 뜨면 `supabase.auth.onAuthStateChange`를 구독해 로그인 · 로그아웃 · 토큰 갱신 · 다른 탭에서의 변화를 Zustand `useSessionStore`에 반영해요.
@@ -273,7 +276,7 @@ npm run test:all   # 단위 + E2E
 | | 범위 | 실행 |
 | --- | --- | --- |
 | **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 체크리스트 분류 추천(`guessCat`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
-| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 | `npm run db:start` 후 `npm run test:e2e` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 / 로그 탐색기: 10만 행 가상화 · 필터 · URL 복원 / 어드민: 접근 제어 → 폼 검증 → 응답 전 반영(요청을 붙잡아 확인) → 실패 주입 시 되돌림 → 동시 수정 충돌 | `npm run db:start` 후 `npm run test:e2e` |
 
 **단위 테스트 커버리지** (v8, 순수 로직 `src/lib` · `src/api/rows.ts` 기준 — 화면 · 훅 · Supabase 호출은 E2E가 맡아요)
 

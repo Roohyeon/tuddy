@@ -45,6 +45,13 @@ export type VaultRow = {
   file: (VaultFile & Json) | null; link_id: string | null; expense_id: string | null;
 }
 
+/** 여행지 카탈로그 (어드민 관리) — updated_at · updated_by는 서버 트리거가 채워요 */
+export type DestinationRow = {
+  key: string; city: string; city_en: string; country_code: string; airport_code: string; airport_name: string;
+  flight_min: number; lat: number; lng: number; hot: boolean; description: string; image_url: string | null;
+  rating: number | null; updated_at: string; updated_by: string | null;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -55,6 +62,7 @@ export type Database = {
       packing_items: Table<PackingRow, 'user_id'>;
       dday_items: Table<DdayRow, 'user_id'>;
       vault_items: Table<VaultRow, 'user_id'>;
+      destinations: Table<DestinationRow, 'hot' | 'description' | 'image_url' | 'rating' | 'updated_at' | 'updated_by'>;
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
