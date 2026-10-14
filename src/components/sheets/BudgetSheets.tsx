@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Expense, ExpenseCat } from '@/types/domain';
+import { applyBudgetSettings, toKrw } from '@/lib/budget';
 import { EXCAT, PAY_METHODS } from '@/lib/constants';
 import { shrink } from '@/lib/files';
 import { D, ddayInfo, fmtLocal, rateLabel, receiptsOf } from '@/lib/trip';
@@ -52,7 +53,7 @@ export function ExpenseSheet({ id, scan }: { id?: string; scan?: File }) {
     ev.preventDefault();
     if (!(amt > 0)) return toast('금액을 입력해 주세요');
     const name = title.trim(); if (!name) return toast('내용을 입력해 주세요');
-    const krw = Math.round(cur === 'KRW' ? amt : amt * t.rate), isNew = !e, eid = e?.id || uid();
+    const krw = toKrw(amt, cur, t.rate), isNew = !e, eid = e?.id || uid();
     update((_, tr) => {
       let it = tr.expenses.find(x => x.id === eid);
       if (!it) { it = { id: eid } as Expense; tr.expenses.push(it); }
@@ -121,12 +122,7 @@ export function BudgetSheet() {
     const b = parseInt(budget.replace(/[^\d]/g, ''), 10), r = d.cur === 'KRW' ? 1 : parseFloat(rate);
     if (!b || !(r > 0)) return toast('예산과 환율을 확인해 주세요');
     const perUnit = r / d.unit;
-    update((_, tr) => {
-      const changed = Math.abs(perUnit - tr.rate) > 1e-9;
-      tr.budget = b; tr.rate = perUnit;
-      if (live) tr.rateMode = 'live'; else if (changed) tr.rateMode = 'manual';
-      tr.expenses.forEach(x => { if (x.cur !== 'KRW') x.krw = Math.round(x.amt * perUnit); });
-    });
+    update((_, tr) => applyBudgetSettings(tr, b, perUnit, live));
     closeSheet(); toast('예산과 환율을 저장했어요');
   };
 

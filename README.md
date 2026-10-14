@@ -213,8 +213,22 @@ npm start          # 빌드 결과 실행
 
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint (eslint-config-next + TypeScript, 경고도 실패로 처리)
-npm test           # Vitest 단위 테스트 (변경분 계산 · 공유 링크 검증 · UUID v7)
+npm test           # Vitest 단위 테스트 (= npm run test:unit)
+npm run test:e2e   # Playwright E2E (로컬 Supabase 필요 — 아래 '테스트')
+npm run test:all   # 단위 + E2E
 ```
+
+### 테스트
+| | 범위 | 실행 |
+| --- | --- | --- |
+| **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 변경분 저장 · 공유 링크 · UUID v7 | `npm test` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 | `npm run db:start` 후 `npm run test:e2e` |
+
+- E2E는 **로컬 Supabase**(Docker)에서만 돌아요. `supabase/migrations`가 그대로 적용되고, 로컬은 이메일 인증이 꺼져 있어 가입 직후 바로 로그인돼요. 운영 프로젝트 주소가 들어오면 실행을 거부하고, 테스트 중 `*.supabase.co`로 나가는 요청도 막아요.
+- 매 실행마다 `e2e-<시각>-<난수>@e2e.tuddy.test` 계정을 새로 만들고, 끝나면 그 도메인 계정만 지워요 (여행 · 지출은 cascade로 함께 삭제).
+- 테스트 서버는 `next build` → `next start -p 3100`으로 띄워요. 이때 `.next`에 로컬 Supabase 주소로 빌드되므로, 직접 `npm start`하기 전에는 `npm run build`를 다시 해 주세요. (`next dev`는 `.next/dev`를 써서 영향이 없어요)
+- 실패하면 `playwright-report/`(HTML 리포트 · `npm run test:e2e:report`)와 `test-results/`(trace · 스크린샷 · 영상)를 확인하세요. CI에서는 artifact로 올라가요.
+- 필요한 변수는 `.env.example`의 'E2E 테스트' 항목을 참고하세요. 기본 설정에서는 넣을 값이 없어요.
 - 샘플 기록북 (SSG): http://localhost:3000/book/tokyo-4days
 - 내 기록북 공유 (SSR): 앱 → 보관함 → **여행 기록북** → *기록북 링크 공유* / *공유 페이지 미리 보기*
 - 배포할 때는 `NEXT_PUBLIC_SITE_URL`을 넣어 주세요. 공유 링크 · OG 이미지 · sitemap의 절대 URL에 쓰여요.
@@ -222,7 +236,7 @@ npm test           # Vitest 단위 테스트 (변경분 계산 · 공유 링크 
 ## 배포 · CI
 | | 담당 | 언제 | 하는 일 |
 | --- | --- | --- | --- |
-| **CI** | GitHub Actions (`.github/workflows/ci.yml`) | `main` 대상 PR 생성 · 커밋 push, `main` push | 코드가 합쳐져도 되는지 검증: 타입 검사 → 린트 → 테스트 → 프로덕션 빌드. 하나라도 실패하면 PR에 ✗가 떠요 |
+| **CI** | GitHub Actions (`.github/workflows/ci.yml`) | `main` 대상 PR 생성 · 커밋 push, `main` push | 코드가 합쳐져도 되는지 검증: 타입 검사 → 린트 → 테스트 → 프로덕션 빌드, 이어서 로컬 Supabase 위 Playwright E2E. 하나라도 실패하면 PR에 ✗가 떠요 |
 | **CD** | Vercel (GitHub 연동) | PR마다 · `main` 병합 | 실제 배포: PR은 **Preview** URL, `main`은 **Production** 도메인 |
 
 CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내는 일"을 맡아요. Vercel도 배포할 때 빌드를 하지만 린트 · 테스트는 돌리지 않으므로, 둘을 함께 써요.

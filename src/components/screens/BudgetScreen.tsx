@@ -1,9 +1,10 @@
 'use client';
 /* 5. 가계부 */
 import { useState } from 'react';
-import type { ExpenseCat, ExpenseFilter } from '@/types/domain';
+import type { ExpenseFilter } from '@/types/domain';
+import { budgetSummary, spendByCat } from '@/lib/budget';
 import { EXCAT } from '@/lib/constants';
-import { compLabel, D, dailyValues, dayDate, dayTitle, expPhase, fmtLocal, rateLabel, spent, tripDays } from '@/lib/trip';
+import { compLabel, D, dailyValues, dayDate, dayTitle, expPhase, fmtLocal, rateLabel } from '@/lib/trip';
 import { cx, md, ORD, toDate, won } from '@/lib/utils';
 import { useTrip } from '@/queries/account';
 import { useSheets } from '@/components/sheets/useSheets';
@@ -15,17 +16,13 @@ const FILTERS: [ExpenseFilter, string][] = [['all', '전체'], ['before', '여�
 export function BudgetScreen() {
   const t = useTrip(), sheets = useSheets();
   const [filter, setFilter] = useState<ExpenseFilter>('all');
-  const d = D(t), sp = spent(t), rem = t.budget - sp, n = tripDays(t);
-  const daily = Math.max(0, Math.round(rem / n / 1000) * 1000);
-  const byCat: Partial<Record<ExpenseCat, number>> = {};
-  t.expenses.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + e.krw);
-  const cats = (Object.entries(byCat) as [ExpenseCat, number][]).sort((a, b) => b[1] - a[1]);
+  const d = D(t), { spent: sp, remaining: rem, remainingPct: remPct, daily } = budgetSummary(t);
+  const cats = spendByCat(t);
   const vals = dailyValues(t), max = Math.max(daily, ...vals) * 1.08 || 1;
   const over = vals.map((v, i) => v > daily ? i : -1).filter(i => i >= 0);
   const cnt: Record<ExpenseFilter, number> = { all: t.expenses.length, before: 0, during: 0 };
   t.expenses.forEach(e => cnt[expPhase(t, e)]++);
   const list = t.expenses.filter(e => filter === 'all' || expPhase(t, e) === filter).sort((a, b) => b.date.localeCompare(a.date));
-  const remPct = t.budget ? rem / t.budget * 100 : 0;
 
   return (
     <main className="screen fade-in">
@@ -35,11 +32,11 @@ export function BudgetScreen() {
       </div>
 
       <section className="bud-hero">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span className="lbl">남은 예산</span><span className="dday" style={{ fontSize: 13 }}>{Math.max(0, Math.round(remPct))}% 남음</span></div>
-        <div className="amt num" style={rem < 0 ? { color: '#f3c2b5' } : undefined}>{won(rem)}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span className="lbl">남은 예산</span><span className="dday" style={{ fontSize: 13 }} data-testid="budget-remaining-pct">{Math.max(0, Math.round(remPct))}% 남음</span></div>
+        <div className="amt num" style={rem < 0 ? { color: '#f3c2b5' } : undefined} data-testid="budget-remaining">{won(rem)}</div>
         {d.cur !== 'KRW' && <div className="fx num">≈ {fmtLocal(rem / t.rate, d)} · 환율 {rateLabel(t)} ({t.rateMode === 'live' ? '실시간' : '직접 설정'})</div>}
         <div className="bar"><i style={{ width: `${Math.max(0, Math.min(100, remPct))}%` }} /></div>
-        <div className="three num"><div><label>총 예산</label><b>{won(t.budget)}</b></div><div><label>사용</label><b>{won(sp)}</b></div><div><label>하루 권장</label><b>{won(daily)}</b></div></div>
+        <div className="three num"><div><label>총 예산</label><b data-testid="budget-total">{won(t.budget)}</b></div><div><label>사용</label><b data-testid="budget-spent">{won(sp)}</b></div><div><label>하루 권장</label><b data-testid="budget-daily">{won(daily)}</b></div></div>
       </section>
 
       <div className="act-row">
@@ -70,9 +67,9 @@ export function BudgetScreen() {
 
       <div className="sec-h"><h2>지출 내역</h2></div>
       <div className="filters">{FILTERS.map(([k, l]) => <button key={k} className={cx('fchip', filter === k && 'on')} onClick={() => setFilter(k)}>{l} {cnt[k]}</button>)}</div>
-      {list.length ? <div className="list-card">
+      {list.length ? <div className="list-card" data-testid="expense-list">
         {list.map(e => (
-          <button key={e.id} className="li" onClick={() => sheets.editExpense(e.id)}>
+          <button key={e.id} className="li" onClick={() => sheets.editExpense(e.id)} data-testid="expense-item">
             <span className="lic"><Icon name={EXCAT[e.cat].icon} /></span>
             <span className="grow"><b>{e.title}</b><small>{md(toDate(e.date))} · {EXCAT[e.cat].label.replace(' · ', '·')} · {e.pay}</small></span>
             <span className="r"><b className="num">{won(e.krw)}</b>{e.cur !== 'KRW' && <small className="num">{fmtLocal(e.amt, d)}</small>}{e.receipt && <span className="tag beige">영수증</span>}</span>
