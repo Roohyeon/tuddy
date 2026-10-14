@@ -1,5 +1,10 @@
 # Tuddy (터디) — 나의 여행 버디
 
+[![CI](https://github.com/Roohyeon/tuddy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Roohyeon/tuddy/actions/workflows/ci.yml)
+[![Vercel](https://img.shields.io/badge/Vercel-배포됨-000000?logo=vercel&logoColor=white)](https://tuddy-gold.vercel.app)
+
+**🔗 배포 주소: https://tuddy-gold.vercel.app** · [샘플 여행 기록북](https://tuddy-gold.vercel.app/book/tokyo-4days) · [실시간 모니터링](https://tuddy-gold.vercel.app/monitor)
+
 여행 전 준비물 챙기기부터 탑승권, 일정, 가계부, 바우처 보관까지 한 곳에서 해결하는 모바일 여행 앱 프론트엔드 프로토타입입니다.
 
 > 기록의 번거로움은 줄이고, 여행의 순간에 집중하게 한다.
