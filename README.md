@@ -32,6 +32,7 @@
 | 공유 링크 기록북 | `/book/share?d=…` | **SSR**: 요청마다 링크 데이터를 검증한 뒤 HTML과 메타 태그 생성 | ƒ Dynamic |
 | 공유 링크 OG 이미지 | `/book/share/og?d=…` | **SSR**: Route Handler에서 `ImageResponse`로 생성 | ƒ Dynamic |
 | sitemap | `/sitemap.xml` | 정적 생성 (샘플 기록북만 포함) | ○ Static |
+| 실시간 모니터링 | `/monitor` | **CSR**: 정적 껍데기 + 브라우저에서 모의 데이터 생성 · 차트 렌더링 (아래 [실시간 시스템 모니터링](#실시간-시스템-모니터링-monitor)) | ○ Static 껍데기 + CSR |
 | 앱 화면 | `/login` `/onboarding` `/home` `/schedule` `/budget` `/packing` `/vault` `/pass` | **CSR**: 빈 앱 껍데기만 정적으로 받고, 데이터는 브라우저가 Supabase에서 받아 그림 | ○ Static 껍데기 + CSR |
 
 ### 1. 공유용 여행 기록북에 SSR/SSG를 적용한 이유
@@ -65,7 +66,8 @@
 | 품질 · 배포 | ESLint(`eslint-config-next`), Vitest, **GitHub Actions** CI, **Vercel** (Preview · Production) |
 | 서버 상태 | **TanStack Query v5** — 계정 조회 · 저장 뮤테이션, 로그인 · 회원가입, 실시간 환율, 장소 좌표 |
 | 클라이언트 상태 | **Zustand v5** — 세션, 화면 선택 값, 바텀 시트, 토스트 |
-| 스타일 | 전역 CSS(앱, 기존 디자인 그대로) + CSS Modules(기록북) |
+| 차트 | **Recharts 3** (모니터링 대시보드) |
+| 스타일 | 전역 CSS(앱, 기존 디자인 그대로) + CSS Modules(기록북 · 모니터링) |
 | 외부 API | Google 지도 임베드, OpenStreetMap Nominatim, open.er-api 환율 |
 
 라우트 그룹으로 레이아웃을 나눠서 렌더링 방식이 섞이지 않게 했어요. 루트 `layout.tsx`는 html · 폰트 · 메타데이터만 담당하고, 클라이언트 Provider와 기기 프레임은 `(app)` 그룹에서만 감싸요. 그래서 `/book/*`는 클라이언트 번들 없이 서버에서 바로 렌더링돼요.
@@ -81,6 +83,7 @@ src/
 │  │  ├─ login/  onboarding/
 │  │  └─ (trip)/                 # 여행이 있어야 들어오는 화면 (Guard)
 │  │     └─ home/ schedule/ budget/ packing/ vault/ pass/
+│  ├─ monitor/page.tsx           # 실시간 시스템 모니터링 (CSR)
 │  └─ book/                      # ── SSR/SSG 영역 ──
 │     ├─ [slug]/page.tsx         # SSG 샘플 기록북
 │     ├─ [slug]/opengraph-image.tsx
@@ -101,6 +104,7 @@ src/
 ├─ components/
 │  ├─ providers/QueryProvider.tsx
 │  ├─ book/                      # TravelBookView (서버 컴포넌트) + book.module.css
+│  ├─ monitor/                   # MonitorDashboard · MetricChart · LiveStats · useStream
 │  ├─ screens/                   # 앱 화면 8개 (클라이언트 컴포넌트)
 │  ├─ sheets/                    # 바텀 시트 + useSheets()
 │  └─ ui/                        # Icon · MapBlock · AppChrome · Guard · 공용 조각
@@ -108,6 +112,7 @@ src/
 │  ├─ book.ts                    # 여행 → 기록북 요약 · 링크 인코딩/검증 · 샘플 데이터
 │  ├─ bookOg.tsx                 # OG 이미지 렌더러
 │  ├─ supabase/                  # 브라우저 클라이언트 · 테이블 타입
+│  ├─ monitor/                   # 모의 지표 스트림 · 원형 버퍼 · LTTB 다운샘플링 · 시간 눈금
 │  └─ destinations · trip · map · files · utils
 └─ types/domain.ts               # 도메인 타입 (Trip · TravelBook …)
 supabase/migrations/             # 테이블 · RLS · 가입 트리거 SQL
@@ -139,6 +144,46 @@ Supabase Auth ──onAuthStateChange──▶ Zustand useSessionStore(user)
 - **저장은 순서대로 처리돼요.** 같은 `scope`로 묶인 뮤테이션은 줄을 서서 실행되므로, 빠르게 여러 번 바꿔도 마지막 상태가 저장돼요.
 - **시트가 닫혀도 끝까지 처리해요.** 좌표 찾기처럼 시트를 닫은 뒤에 끝나는 작업은 결과 처리를 `useMutation` 옵션에 두어서, 컴포넌트가 사라져도 결과가 저장돼요.
 - **로딩 · 에러는 쿼리가 알려 줘요.** 실시간 환율은 `isFetching`과 `isError`로 안내 문구와 버튼 상태를 정하고, 로그인 실패는 뮤테이션 에러 메시지를 폼에 그대로 보여 줘요.
+
+## 실시간 시스템 모니터링 (`/monitor`)
+1초마다 들어오는 시스템 지표(CPU 사용률 · 초당 쿼리 수 · 평균 응답 시간)를 실시간 선형 차트 3개로 보여 주는 대시보드예요. **데이터가 계속 쌓여도 느려지지 않는 실시간 시각화**와 **리렌더 범위를 좁히는 상태 관리**를 보여 주려고 만들었어요.
+
+| 기능 | 동작 |
+| --- | --- |
+| 모의 서버 | 실제 SSE/WebSocket 대신 브라우저 안에서 `setInterval`로 1초마다 지표 생성. CPU는 약 90초 주기 부하를 따라가는 평균 회귀 랜덤 워크 + 가끔 스파이크, 쿼리 수 · 응답 시간은 CPU와 연동돼요 |
+| 차트 | 지표별 독립 선형 차트, x축은 `HH:MM:SS`, y축 고정 범위, CPU · 응답 시간 '주의' 기준선, 호버 툴팁 |
+| 일시정지 / 재개 | 누르는 즉시 수집이 멈추고, 재개하면 멈춘 구간을 끊어서 표시한 뒤 지금부터 다시 쌓여요 |
+| 확대 / 이동 | 차트를 드래그하면 그 구간을 세 차트 모두 확대, ‹ › 로 구간 이동, 더블클릭 또는 *실시간 뷰로* 버튼으로 복귀. 보기 범위 1분 · 5분 · 10분 선택 |
+
+### 성능 최적화
+| 문제 | 해결 |
+| --- | --- |
+| 데이터가 끝없이 쌓여 메모리가 늘어나요 | **고정 크기 원형 버퍼**(`RingBuffer`)에 최근 600개(10분)만 보관해요. 가득 차면 오래된 값을 덮어써서 추가가 항상 O(1)이에요 (`Array.shift`처럼 전체를 당기지 않아요) |
+| 보기 범위가 넓으면 SVG 점이 너무 많아요 | 보이는 구간만 **이진 탐색**으로 잘라낸 뒤, 300개가 넘으면 **LTTB**(Largest-Triangle-Three-Buckets)로 줄여요. 선 모양과 스파이크는 그대로 남고, 일시정지로 끊긴 구간 표시도 지워지지 않아요 |
+| 렌더링이 데이터 생성 주기에 끌려가요 | 버퍼에는 바로 넣고, 스냅샷 생성 · 구독자 알림은 **`requestAnimationFrame`에 한 번**으로 묶어요. 탭이 숨겨지면 rAF가 멈춰 렌더링도 쉬어요 |
+| 실시간 데이터에 애니메이션을 켜면 매초 선 전체가 출렁여요 | 보간 애니메이션을 끄고, **고정 y축 + 데이터와 함께 흘러가는 x축 눈금**(10초 · 1분 단위의 반듯한 시각)으로 끊김 없이 보이게 했어요 |
+
+### 리렌더 최적화
+1초마다 바뀌는 데이터를 React state에 두면 대시보드 전체가 매초 다시 그려져요. 그래서 데이터는 React 바깥의 **외부 스토어**(`MetricStream`)에 두고, 각 컴포넌트가 `useSyncExternalStore`로 **필요한 조각만** 구독해요.
+
+```
+MetricStream (외부 스토어 · 원형 버퍼)
+   │  rAF로 프레임당 한 번 notify
+   ├─▶ LiveStats      : snapshot.latest          (최신 값만)
+   ├─▶ MetricChart ×3 : 보이는 구간 slice        (얕은 비교로 같으면 이전 참조 유지)
+   ├─▶ BufferMeter    : snapshot.points.length   (가득 찬 뒤엔 리렌더 없음)
+   └─▶ PauseButton    : snapshot.paused
+MonitorDashboard : 보기 범위 · 확대 구간만 useState → 1초 틱에 리렌더 0회
+```
+- `useStreamSelector(stream, select, isEqual)`: 선택 결과가 같으면 이전 참조를 돌려줘서 리렌더를 건너뛰어요 (`use-sync-external-store/with-selector`와 같은 방식). **확대 중에는 새 데이터가 들어와도 보이는 구간이 그대로라 차트를 다시 그리지 않아요.**
+- 자식은 `React.memo`, 넘기는 콜백은 `useCallback`, 다운샘플링 · 축 범위 · 눈금은 `useMemo`로 고정했어요. 스트림의 `subscribe` · `getSnapshot` · `toggle`은 화살표 함수 필드라 참조가 바뀌지 않아요.
+- 각 카드에 **렌더 횟수**를 표시해서 효과를 바로 확인할 수 있어요. 카운터는 state 없이 `useEffect`에서 DOM에 바로 써서, 카운터 자체가 리렌더를 만들지 않아요.
+
+| 상황 (3초 관찰) | 대시보드 | 최신 값 타일 | 차트 |
+| --- | --- | --- | --- |
+| 실시간 | 0회 | 매초 | 매초 |
+| 확대 중 (데이터는 계속 수집) | 0회 | 매초 | **0회** |
+| 일시정지 | 0회 | 0회 | 0회 |
 
 ## Supabase 설정
 ### 1. 프로젝트 · 환경 변수
@@ -221,8 +266,8 @@ npm run test:all   # 단위 + E2E
 ### 테스트
 | | 범위 | 실행 |
 | --- | --- | --- |
-| **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 변경분 저장 · 공유 링크 · UUID v7 | `npm test` |
-| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 | `npm run db:start` 후 `npm run test:e2e` |
+| **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 | `npm run db:start` 후 `npm run test:e2e` |
 
 - E2E는 **로컬 Supabase**(Docker)에서만 돌아요. `supabase/migrations`가 그대로 적용되고, 로컬은 이메일 인증이 꺼져 있어 가입 직후 바로 로그인돼요. 운영 프로젝트 주소가 들어오면 실행을 거부하고, 테스트 중 `*.supabase.co`로 나가는 요청도 막아요.
 - 매 실행마다 `e2e-<시각>-<난수>@e2e.tuddy.test` 계정을 새로 만들고, 끝나면 그 도메인 계정만 지워요 (여행 · 지출은 cascade로 함께 삭제).
@@ -230,6 +275,7 @@ npm run test:all   # 단위 + E2E
 - 실패하면 `playwright-report/`(HTML 리포트 · `npm run test:e2e:report`)와 `test-results/`(trace · 스크린샷 · 영상)를 확인하세요. CI에서는 artifact로 올라가요.
 - 필요한 변수는 `.env.example`의 'E2E 테스트' 항목을 참고하세요. 기본 설정에서는 넣을 값이 없어요.
 - 샘플 기록북 (SSG): http://localhost:3000/book/tokyo-4days
+- 실시간 모니터링: http://localhost:3000/monitor (로그인 · Supabase 없이 동작)
 - 내 기록북 공유 (SSR): 앱 → 보관함 → **여행 기록북** → *기록북 링크 공유* / *공유 페이지 미리 보기*
 - 배포할 때는 `NEXT_PUBLIC_SITE_URL`을 넣어 주세요. 공유 링크 · OG 이미지 · sitemap의 절대 URL에 쓰여요.
 
