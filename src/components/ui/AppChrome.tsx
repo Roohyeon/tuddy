@@ -116,7 +116,7 @@ function Splash() {
   if (phase === 'gone') return null;
   return (
     <div className={cx('splash', phase === 'out' && 'out')} aria-hidden="true">
-      <div><Logo /><div className="word" style={{ fontFamily: 'Outfit, var(--f-body)' }}>Tuddy</div></div>
+      <div><Logo /><div className="word" style={{ fontFamily: 'var(--f-logo)' }}>Tuddy</div></div>
     </div>
   );
 }

@@ -15,3 +15,40 @@
 | /vault | 0-baseline | 71 | 6.29s | 2.88s | 0.000 | 102ms | 3.56s | 267 | 270 | 641 | 76 |
 
 > 기준선 메모: LCP 요소는 텍스트예요(로그인 `h1.greet`, 기록북 제목, 홈 탑승권 카드). 앱 화면은 CSR이라 HTML → JS → 세션 확인 → Supabase 조회 → 렌더를 거친 뒤에 LCP가 잡혀서, FCP(2.9s)와 LCP(4.7~6.5s) 차이가 커요. `/schedule`은 Google 지도 iframe 때문에 전송량이 1.3MB, 요청이 138개예요.
+
+### 1-next-font — 로컬 프로덕션 빌드 · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | 1-next-font | 71 | 21.70s | 2.26s | 0.000 | 139ms | 3.32s | 240 | 2522 | 2850 | 303 |
+| /book/tokyo-4days | 1-next-font | 70 | 21.69s | 2.71s | 0.001 | 86ms | 2.71s | 242 | 2581 | 2926 | 312 |
+| /monitor | 1-next-font | 58 | 21.44s | 2.26s | 0.000 | 287ms | 9.23s | 244 | 2517 | 2852 | 304 |
+| /home | 1-next-font | 71 | 22.93s | 1.50s | 0.000 | 116ms | 3.49s | 267 | 2604 | 3027 | 341 |
+| /schedule | 1-next-font | 60 | 22.39s | 2.78s | 0.000 | 135ms | 12.97s | 267 | 2590 | 3620 | 392 |
+| /budget | 1-next-font | 72 | 22.50s | 1.50s | 0.000 | 159ms | 3.28s | 267 | 2539 | 2962 | 337 |
+| /vault | 1-next-font | 71 | 22.76s | 2.11s | 0.000 | 144ms | 3.46s | 267 | 2541 | 2964 | 336 |
+
+### 1b-next-font-no-preload — 로컬 프로덕션 빌드 · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | 1b-next-font-no-preload | 85 | 4.06s | 1.51s | 0.000 | 85ms | 2.76s | 240 | 171 | 486 | 32 |
+| /book/tokyo-4days | 1b-next-font-no-preload | 79 | 4.22s | 3.32s | 0.000 | 0ms | 3.32s | 242 | 312 | 637 | 51 |
+| /monitor | 1b-next-font-no-preload | 78 | 4.06s | 3.16s | 0.027 | 178ms | 3.16s | 244 | 228 | 549 | 40 |
+| /home | 1b-next-font-no-preload | 74 | 6.17s | 1.51s | 0.000 | 148ms | 3.56s | 267 | 395 | 774 | 87 |
+| /schedule | 1b-next-font-no-preload | 74 | 5.72s | 1.51s | 0.000 | 167ms | 4.13s | 267 | 380 | 1368 | 138 |
+| /budget | 1b-next-font-no-preload | 78 | 5.49s | 1.51s | 0.000 | 133ms | 3.23s | 267 | 268 | 647 | 76 |
+| /vault | 1b-next-font-no-preload | 77 | 5.34s | 1.51s | 0.000 | 115ms | 2.96s | 267 | 278 | 657 | 76 |
+
+### prod-google-fonts — https://tuddy-gold.vercel.app · 5회 중앙값 · 2026-10-14
+
+| 페이지 | 단계 | 점수 | LCP | FCP | CLS | TBT | SI | JS(KB) | 폰트(KB) | 전체(KB) | 요청 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| /login | prod-google-fonts | 80 | 4.22s | 3.02s | 0.000 | 8ms | 3.89s | 242 | 166 | 474 | 30 |
+| /book/tokyo-4days | prod-google-fonts | 96 | 2.41s | 1.88s | 0.000 | 91ms | 1.88s | 243 | 304 | 621 | 49 |
+| /monitor | prod-google-fonts | 90 | 2.86s | 1.89s | 0.000 | 207ms | 2.61s | 243 | 221 | 532 | 38 |
+
+> 1단계 메모 (next/font)
+> - `1-next-font`: `subsets: ['latin']`이어도 IBM Plex Sans KR의 **한글 조각 280여 개가 모두 preload**돼 폰트 2.5MB · 요청 300개 → LCP 21s. preload를 끈 `1b`가 실제 적용안이에요.
+> - `1b`: 렌더링을 막던 외부 CSS가 사라져 **FCP 2.88s → 1.51s**(앱 화면). 하지만 LCP는 나빠졌어요(기록북 2.23s → 4.22s, 홈 4.70s → 6.17s).
+> - 추정 원인: 로컬 `next start`는 HTTP/1.1이라 같은 출처로 옮긴 폰트 조각이 JS와 연결 6개를 나눠 써요. 예전엔 `fonts.gstatic.com`(HTTP/2, 별도 연결)이었어요. 운영(`prod-google-fonts`)이 로컬 기준선과 비슷한 걸 보면 로컬 측정이 HTTP 프로토콜 차이를 반영하지 못할 수 있어요 → **Vercel Preview(HTTP/2)에서 재측정해 유지 여부를 결정**해요.

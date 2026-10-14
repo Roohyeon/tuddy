@@ -40,6 +40,8 @@ function localEnv() {
 }
 
 async function startServer() {
+  // 이전 서버가 남아 있으면 지워진 빌드 파일을 500으로 응답해서 측정이 틀어져요
+  if (await fetch(BASE).then(() => true, () => false)) throw new Error(`${BASE}에 이미 서버가 떠 있어요. 종료한 뒤 다시 실행해 주세요.`);
   const env = localEnv();
   if (!args['no-build']) execSync('npm run build', { env, stdio: 'inherit' });
   const srv = spawn('npx', ['next', 'start', '-p', String(PORT), '-H', '127.0.0.1'], { env, shell: true, stdio: 'ignore' });
@@ -78,10 +80,20 @@ async function audit(page, url, keepSession) {
 }
 
 async function demoLogin(page) {
-  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle0' });
-  await page.waitForFunction(() => !document.querySelector('.splash:not(.out)'));   // 스플래시가 버튼을 덮고 있어요
-  await page.locator('::-p-xpath(//button[contains(., "데모 여행으로 둘러보기")])').click();
-  await page.waitForFunction(() => location.pathname === '/home', { timeout: 30_000 });
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.goto(`${BASE}/login`, { waitUntil: 'networkidle0' });
+      await page.waitForFunction(() => !document.querySelector('.splash:not(.out)'), { timeout: 15_000 });   // 스플래시가 버튼을 덮고 있어요
+      await page.locator('::-p-xpath(//button[contains(., "데모 여행으로 둘러보기")])').click();
+      await page.waitForFunction(() => location.pathname === '/home', { timeout: 20_000 });
+      return;
+    } catch (e) {
+      const where = await page.evaluate(() => `${location.pathname} · ${document.body.innerText.replace(/\s+/g, ' ').slice(0, 160)}`).catch(() => '?');
+      console.warn(`
+데모 로그인 실패 (${attempt}/3): ${where}`);
+      if (attempt === 3) throw e;
+    }
+  }
 }
 
 const srv = remote ? null : await startServer();
@@ -105,7 +117,8 @@ try {
   }
 } finally {
   await browser.close();
-  if (srv) { srv.kill(); if (process.platform === 'win32') try { execSync(`taskkill /pid ${srv.pid} /T /F`, { stdio: 'ignore' }); } catch { /* 이미 종료 */ } }
+  // Windows에선 셸(cmd) → npx → next 순으로 떠요. 셸을 먼저 끝내면 next가 고아로 남으니 트리째 종료해요
+  if (srv) { if (process.platform === 'win32') try { execSync(`taskkill /pid ${srv.pid} /T /F`, { stdio: 'ignore' }); } catch { /* 이미 종료 */ } else srv.kill(); }
 }
 delete results.__loggedIn;
 
