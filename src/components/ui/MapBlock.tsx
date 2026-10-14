@@ -4,6 +4,7 @@ import type { Trip } from '@/types/domain';
 import { computeMap } from '@/lib/map';
 import { D, dayItems } from '@/lib/trip';
 import { cx } from '@/lib/utils';
+import { useIdleVisible } from '@/hooks/useIdleVisible';
 import { Icon } from './Icon';
 
 /** 번호 동선 지도 — 구글 지도 위에 같은 투영으로 핀과 점선 동선을 겹쳐 그려요 */
@@ -25,6 +26,10 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
     return () => { ro.disconnect(); clearTimeout(tm); };
   }, []);
 
+  // Google 지도 iframe(수백 KB · 요청 100여 개)은 화면에 보이고 한가해진 뒤 붙여요.
+  // 그 전에도 핀 · 점선 동선 오버레이는 바로 그려지고, 자리는 .gmap 높이와 shimmer 배경이 지켜요
+  const showMap = useIdleVisible(box);
+
   const [W, H] = size;
   const f = items.find(s => s.id === focus) || null;
   const view = W && H ? computeMap(t, items, f?.id ?? null, route, W, H) : null;
@@ -34,7 +39,7 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
   return (
     <div>
       <div ref={box} className={cx('gmap', big && 'big', route && 'route')}>
-        {view && <iframe src={view.src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`${D(t).city} 지도`} tabIndex={-1} />}
+        {view && showMap && <iframe src={view.src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`${D(t).city} 지도`} tabIndex={-1} />}
         <svg className="ov" aria-hidden="true">
           {line && <>
             <polyline points={line} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity=".85" />
