@@ -60,9 +60,12 @@ export function Logo({ className = '' }: { className?: string }) {
   return (
     <svg className={cx('logo-mark', className)} viewBox="0 0 100 112" aria-label="Tuddy" role="img">
       <defs><linearGradient id={g} x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#7c6a60" /><stop offset=".55" stopColor="#b9805f" /><stop offset="1" stopColor="#d49a7b" /></linearGradient></defs>
-      <path d="M27 59.3A30 30 0 1 1 74.6 57.2L50 100" fill="none" stroke="#6c625c" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      <path className="trail" d="M50 100 32 85q-7-6 0-13l18-18" fill="none" stroke={`url(#${g})`} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      <g className="plane" transform="translate(61 42) rotate(45) scale(1.05)" fill={`url(#${g})`}><path d="M0-12c1.4 0 1.8 2.3 1.8 4.4v4.6L11 3v2.6L1.8 2.8v6l3.2 2.5v1.9L0 12l-5 1.2v-1.9l3.2-2.5v-6L-11 5.6V3l9.2-6v-4.6C-1.8-9.7-1.4-12 0-12z" /></g>
+      <path d="M24.9 56.4A30 30 0 1 1 74.6 57.2L50 100" fill="none" stroke="#6c625c" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path className="trail" d="M50 100 25.5 79.5q-7-6 0-13l18.1-18.1" fill="none" stroke={`url(#${g})`} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* 위치는 바깥 g의 transform 속성으로, 등장 애니메이션은 안쪽 g에 — CSS transform 애니메이션이 속성을 덮어쓰지 않도록 나눠요 */}
+      <g transform="translate(55 37) rotate(45) scale(1.05)">
+        <g className="plane" fill={`url(#${g})`}><path d="M0-12c1.4 0 1.8 2.3 1.8 4.4v4.6L11 3v2.6L1.8 2.8v6l3.2 2.5v1.9L0 12l-5 1.2v-1.9l3.2-2.5v-6L-11 5.6V3l9.2-6v-4.6C-1.8-9.7-1.4-12 0-12z" /></g>
+      </g>
     </svg>
   );
 }
