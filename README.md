@@ -220,6 +220,22 @@ Legacy = 지표를 대시보드 `useState`에 두고 props로 전달, `memo`/`us
 | 프레임 드롭 | 10만 행 스크롤 3초 | __프레임 | __프레임 | |
 | DOM 행 수 | 10만 행 로드 후 | __ | ~30 | |
 
+#### Core Web Vitals — 로그 탐색기 추가 전후 · 2026-10-15
+
+측정: `node perf/measure.mjs` · Lighthouse 모바일 기본값(4× CPU · 느린 4G) · 로컬 프로덕션 빌드 · 5회 중앙값 ([전체 기록](perf/RESULTS.md))
+
+| 지표 | 기준(Good) | 추가 전 (`3-map-idle`) | 추가 후 (`4-log-explorer`) |
+| --- | --- | --- | --- |
+| LCP | ≤ 2.5s | 4.36s | 4.66s |
+| CLS | ≤ 0.1 | 0.027 | 0.027 |
+| TBT | ≤ 200ms | 196ms | 94ms |
+| JS (같은 출처, 전송량) | | 244KB | 271KB |
+| INP (필터 칩 클릭) | ≤ 200ms | — | __ms |
+
+- 10만 건 로그를 만들고 조회하는 작업은 첫 페인트 뒤(`requestAnimationFrame`)로 미뤄서 TBT가 늘지 않았어요(회차별 88~155ms. 196→94ms 감소는 측정 PC 부하에 따른 오차로 봐요). 로그 탐색기를 추가하면서 JS는 27KB 늘었어요.
+- LCP 요소는 상단 소개 문구(`p.lede`)예요. 로컬 `next start`는 HTTP/1.1이라 LCP가 실제보다 길게 나와요. HTTP/2를 쓰는 Vercel Preview에서는 같은 페이지가 2.27s였어요(`preview-next-font`, 로그 탐색기 추가 전).
+- Lighthouse는 INP를 잴 수 없어요. Chrome DevTools Live Metrics에서 필터 칩을 직접 클릭해 잰 값을 채울 자리예요.
+
 ## Supabase 설정
 ### 1. 프로젝트 · 환경 변수
 1. [supabase.com](https://supabase.com)에서 프로젝트를 만들어요.
