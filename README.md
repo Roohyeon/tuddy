@@ -393,7 +393,8 @@ CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내
 | 이상한 파일 | 4MB 상한, 확장자 대신 **매직 넘버**로 JPEG · PNG · WebP · GIF만 허용. 브라우저가 1600px JPEG로 줄여 보내 이미지 토큰도 줄여요 |
 
 - 제한 · 캐시는 서버 메모리라 인스턴스마다 따로예요. 포트폴리오 규모에선 충분하고, 서비스로 키운다면 Redis(Upstash)로 옮기면 돼요.
-- **키가 없으면** API가 503(`not_configured`)을 주고, 화면은 예시 값으로 채워요(로컬 · CI 기본 동작).
+- **키가 없으면** API가 503(`not_configured`)을 주고, 화면은 예시 값으로 채워요(로컬 · CI · 배포 사이트 기본 동작 — 비용 0원).
+- **검증 범위**: 실제 키로 인식 품질은 재지 않았어요. 대신 Claude 응답을 가짜로 바꾼 단위 테스트(캐시 · 실패 처리 · 요청 형식)와 E2E(화면 흐름 · 429 · 항공권 아님 · 키 없을 때 대체)로 확인했고, 가짜 키로 로그인 → 서버 → 제한 → Anthropic API까지 실제 요청이 도달해 인증 실패가 502로 안전하게 바뀌는 것도 확인했어요.
 - 코드: `src/app/api/ticket-scan/route.ts` · `src/lib/server/` · `src/api/ticketScan.ts`. 테스트: `src/lib/server/*.test.ts`, `e2e/ticket-scan.spec.ts`.
 
 ## Google 지도
