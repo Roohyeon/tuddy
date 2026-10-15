@@ -384,17 +384,15 @@ CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내
 
 | 위협 · 비용 | 막는 방법 |
 | --- | --- |
-| API 키 노출 | 키는 `ANTHROPIC_API_KEY`(`NEXT_PUBLIC_` 아님)로만 받고, 호출 모듈은 `import 'server-only'` — 클라이언트에서 import하면 빌드가 실패해요. 가짜 키로 빌드해 `.next/static`에 키가 없는 것을 확인했어요. 오류 응답에는 내부 메시지 없이 `code`만 보내요 |
-| 아무나 호출 | Supabase 로그인 토큰(`Authorization: Bearer`)을 서버에서 `auth.getUser`로 확인 → 없으면 401 |
-| 남용 · 비용 폭주 | 고정 창 Rate Limit: IP 분당 10 → 사용자 분당 3 · 하루 20 → 서비스 전체 하루 300. 넘으면 **429 + `Retry-After`**. 좁은 창부터 세서 분당 제한에 막힌 요청은 일일 할당량을 깎지 않아요 |
-| 같은 이미지 반복 호출 | 이미지 SHA-256(+ 모델 · 프롬프트 버전)으로 결과를 30일 캐시하고, **할당량보다 먼저** 확인해요(재인식은 무료). 같은 이미지 동시 요청(연타)은 한 번의 호출로 합치고, 실패는 캐시하지 않아요 |
-| 이상한 파일 · 큰 파일 | 4MB 상한, 확장자 · Content-Type 대신 **매직 넘버**로 JPEG · PNG · WebP · GIF만 허용. 브라우저가 1600px JPEG로 줄여 보내 이미지 토큰도 줄여요 |
-| 이미지 속 지시문(프롬프트 인젝션) | 이미지 글자는 데이터로만 다루라고 지시하고, 응답은 Zod 스키마 구조화 출력으로 형식을 강제해요 |
+| API 키 노출 | 키는 `ANTHROPIC_API_KEY`(`NEXT_PUBLIC_` 아님)로만 받고, 호출 모듈은 `import 'server-only'` — 클라이언트에서 import하면 빌드가 실패해요. 오류 응답에는 내부 메시지 없이 `code`만 보내요 |
+| 아무나 호출 | Supabase 로그인 토큰(`Authorization: Bearer`)을 서버에서 확인 → 없으면 401 |
+| 비용 폭주 | 하루 제한: 사용자 10회 · 서비스 전체 30회. 넘으면 **429 + `Retry-After`**. 진짜 상한은 Anthropic Console의 월 지출 한도로 걸어요 |
+| 같은 이미지 반복 호출 | 이미지 SHA-256으로 결과를 캐시하고 **할당량보다 먼저** 확인해요 (다시 올린 이미지는 무료). 실패는 캐시하지 않아요 |
+| 이상한 파일 | 4MB 상한, 확장자 대신 **매직 넘버**로 JPEG · PNG · WebP · GIF만 허용. 브라우저가 1600px JPEG로 줄여 보내 이미지 토큰도 줄여요 |
 
-- **저장소**: `UPSTASH_REDIS_REST_URL` · `UPSTASH_REDIS_REST_TOKEN`(또는 Vercel Marketplace의 `KV_REST_API_*`)이 있으면 Upstash Redis, 없으면 서버 메모리예요. 메모리는 인스턴스마다 따로라 **운영에서는 Upstash를 연결**해 주세요.
-- **키가 없으면** API가 503(`not_configured`)을 주고, 화면은 예전처럼 예시 값으로 채워요(로컬 · CI 기본 동작).
-- **비용 추적**: 호출마다 `{"type":"llm-usage",...}` 한 줄 로그(입력 · 출력 토큰)를 남겨요. 거절 시 서버 측 대체 모델(`fallbacks: "default"`)로 한 번 더 시도해요.
-- 코드: `src/app/api/ticket-scan/route.ts`(검사 순서) · `src/lib/server/`(Claude 호출 · Rate Limit · 저장소) · `src/api/ticketScan.ts`(브라우저 fetch). 테스트: `src/lib/server/*.test.ts`(캐시 · 중복 합치기 · 한도), `e2e/ticket-scan.spec.ts`(화면 흐름 · 429 · 키 없을 때 대체).
+- 제한 · 캐시는 서버 메모리라 인스턴스마다 따로예요. 포트폴리오 규모에선 충분하고, 서비스로 키운다면 Redis(Upstash)로 옮기면 돼요.
+- **키가 없으면** API가 503(`not_configured`)을 주고, 화면은 예시 값으로 채워요(로컬 · CI 기본 동작).
+- 코드: `src/app/api/ticket-scan/route.ts` · `src/lib/server/` · `src/api/ticketScan.ts`. 테스트: `src/lib/server/*.test.ts`, `e2e/ticket-scan.spec.ts`.
 
 ## Google 지도
 기본은 API 키 없이 동작하는 Google 지도 임베드를 사용해요. 일정 좌표로 지도 중심 · 줌을 계산하고, 같은 메르카토르 투영으로 번호 핀과 연결선을 지도 위에 겹쳐 그려요 (그래서 기본 지도는 드래그 대신 핀 · 칩을 눌러 이동해요). 공식 **Maps Embed API**를 쓰려면 `.env.local`에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`를 넣으세요 (`.env.example` 참고) (공개 배포 시 HTTP 리퍼러 제한 필수).

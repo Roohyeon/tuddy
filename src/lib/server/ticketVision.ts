@@ -2,19 +2,19 @@
    항공권 캡처 → 구조화된 탑승 정보 (Claude Vision)
    - 'server-only': 이 파일을 클라이언트 컴포넌트에서 import하면 빌드가 실패해요 → API 키가 번들에 들어갈 길이 없어요
    - API 키는 ANTHROPIC_API_KEY(NEXT_PUBLIC_ 아님)에서 SDK가 직접 읽어요
-   - 같은 이미지는 해시로 캐시 · 진행 중인 요청과 합쳐서 한 번만 호출해요
+   - 같은 이미지는 해시로 캐시해서 다시 부르지 않아요 (서버 메모리)
    ========================================================= */
 import 'server-only';
 import { createHash } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { TicketScanSchema, type ImageType, type TicketScan } from '@/lib/ticketScan';
-import { kv } from './kv';
 
 const MODEL = 'claude-opus-5-5';
 /** 프롬프트 · 스키마를 바꾸면 올려 주세요 → 예전 캐시를 쓰지 않아요 */
 const PROMPT_VERSION = 1;
-const CACHE_TTL_SEC = 60 * 60 * 24 * 30;   // 30일
+/** 메모리가 끝없이 늘지 않게 최근 결과만 보관해요 */
+const CACHE_MAX = 200;
 
 const SYSTEM = `항공권 · 탑승권 · e-티켓 캡처에서 탑승 정보를 뽑아 JSON으로 돌려줘요.
 - 이미지에 보이는 값만 옮기고, 보이지 않는 값은 null로 둬요. 추측하거나 계산해서 채우지 마세요.
@@ -60,26 +60,14 @@ async function callClaude(bytes: Uint8Array, mediaType: ImageType): Promise<Tick
   return res.parsed_output;
 }
 
-/** 같은 인스턴스에서 같은 이미지가 동시에 들어오면(연타 · 재시도) 한 번만 호출해요 */
-const inflight = new Map<string, Promise<TicketScan>>();
+const cache = new Map<string, TicketScan>();
 
-export async function scanTicket(bytes: Uint8Array, mediaType: ImageType): Promise<{ result: TicketScan; cached: boolean }> {
-  const key = cacheKey(bytes);
-  const hit = await kv().get(key);
-  if (hit) return { result: TicketScanSchema.parse(JSON.parse(hit)), cached: true };
+/** 이미 인식한 이미지면 결과를 돌려줘요 — 할당량을 세기 전에 써서, 다시 올린 이미지는 할당량을 깎지 않아요 */
+export const cachedScan = (bytes: Uint8Array) => cache.get(cacheKey(bytes)) ?? null;
 
-  let job = inflight.get(key);
-  if (!job) {
-    job = callClaude(bytes, mediaType)
-      .then(async result => { await kv().set(key, JSON.stringify(result), CACHE_TTL_SEC); return result; })
-      .finally(() => inflight.delete(key));
-    inflight.set(key, job);
-  }
-  return { result: await job, cached: false };
-}
-
-/** 캐시만 확인해요 — Rate Limit을 세기 전에 써서, 이미 아는 이미지는 할당량을 깎지 않아요 */
-export async function cachedScan(bytes: Uint8Array): Promise<TicketScan | null> {
-  const hit = await kv().get(cacheKey(bytes));
-  return hit ? TicketScanSchema.parse(JSON.parse(hit)) : null;
+export async function scanTicket(bytes: Uint8Array, mediaType: ImageType): Promise<TicketScan> {
+  const result = await callClaude(bytes, mediaType);   // 실패(거절 · 파싱 실패)는 캐시하지 않아요
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);   // 가장 오래된 것부터
+  cache.set(cacheKey(bytes), result);
+  return result;
 }

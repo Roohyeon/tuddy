@@ -8,7 +8,7 @@ import type { TicketScanResponse } from '@/lib/ticketScan';
 
 export type ScanErrorCode =
   | 'unauthorized' | 'rate_limited' | 'too_large' | 'unsupported' | 'refused'
-  | 'not_configured' | 'upstream_busy' | 'timeout' | 'network' | 'unknown';
+  | 'not_configured' | 'timeout' | 'network' | 'unknown';
 
 export class ScanError extends Error {
   constructor(readonly code: ScanErrorCode, message: string, readonly retryAfterSec?: number) { super(message); }
