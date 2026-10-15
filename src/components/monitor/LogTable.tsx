@@ -81,6 +81,10 @@ export const LogTable = memo(function LogTable({ store, rows, sort, desc, onSort
     },
   });
 
+  // 진단: 렌더 횟수를 state 없이 data 속성에 써요 (README 렌더 횟수 표 측정용)
+  const renders = useRef(0);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.dataset.renders = String(++renders.current); });
+
   // 검색 · 필터 · 정렬이 바뀌면 맨 위부터 보여 줘요
   useEffect(() => { virtualizer.scrollToOffset(0); }, [rows, virtualizer]);
 

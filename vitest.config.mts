@@ -2,7 +2,13 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // 서버 전용 모듈도 Node에서 테스트할 수 있게 — Next 빌드에서는 여전히 클라이언트 import를 막아요
+      'server-only': fileURLToPath(new URL('./node_modules/server-only/empty.js', import.meta.url)),
+    },
+  },
   test: {
     // 순수 로직(변경분 계산 · 공유 링크 검증 · id 생성)만 테스트해서 브라우저 환경이 필요 없어요
     environment: 'node',

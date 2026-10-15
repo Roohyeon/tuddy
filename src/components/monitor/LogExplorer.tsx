@@ -11,6 +11,7 @@ import { DEFAULT_QUERY, isFiltered, runQuery, type SortKey } from '@/lib/monitor
 import { EVENT_TYPES, LEVELS, LEVEL_LABEL, TYPE_LABEL, generateLogs, type EventType, type Level, type LogStore } from '@/lib/monitor/logs';
 import { LogTable } from './LogTable';
 import { useDebouncedSearch, useLogQuery } from './useLogQuery';
+import { useRenderCount } from './useStream';
 import s from './logs.module.css';
 
 const HOUR = 3_600_000;
@@ -35,6 +36,7 @@ export function LogExplorer() {
 
   const onSort = useCallback((sort: SortKey, desc: boolean) => setQuery({ sort, desc }), [setQuery]);
   const commitSearch = useCallback((q: string) => setQuery({ q }), [setQuery]);
+  const renders = useRenderCount<HTMLSpanElement>();
 
   return (
     <section className={s.section} aria-labelledby="log-title">
@@ -71,7 +73,7 @@ export function LogExplorer() {
         {result && data ? (
           <>
             <span><b>{nf.format(result.rows.length)}</b> / {nf.format(data.store.count)}건</span>
-            <span className={s.diag}>생성 {data.ms.toFixed(0)}ms · 조회 {result.ms.toFixed(0)}ms{stale ? ' · 계산 중…' : ''}</span>
+            <span className={s.diag}>생성 {data.ms.toFixed(0)}ms · 조회 {result.ms.toFixed(0)}ms{stale ? ' · 계산 중…' : ''} · 렌더 <span ref={renders} data-testid="log-renders">0</span></span>
             {(isFiltered(query) || query.sort !== DEFAULT_QUERY.sort || query.desc !== DEFAULT_QUERY.desc) && (
               <button type="button" className={s.reset} onClick={() => setQuery(DEFAULT_QUERY)}>초기화</button>
             )}

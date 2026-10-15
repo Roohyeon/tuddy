@@ -186,11 +186,43 @@ MonitorDashboard : 보기 범위 · 확대 구간만 useState → 1초 틱에 �
 - 자식은 `React.memo`, 넘기는 콜백은 `useCallback`, 다운샘플링 · 축 범위 · 눈금은 `useMemo`로 고정했어요. 스트림의 `subscribe` · `getSnapshot` · `toggle`은 화살표 함수 필드라 참조가 바뀌지 않아요.
 - 각 카드에 **렌더 횟수**를 표시해서 효과를 바로 확인할 수 있어요. 카운터는 state 없이 `useEffect`에서 DOM에 바로 써서, 카운터 자체가 리렌더를 만들지 않아요.
 
-| 상황 (3초 관찰) | 대시보드 | 최신 값 타일 | 차트 |
+### 상황별 렌더 횟수 (실측)
+
+측정: `node perf/render-counts.mjs` · 프로덕션 빌드 · Chromium headless 1280×900 · 3회 측정 · 2026-10-15
+화면의 렌더 카운터(대시보드 · 최신 값 타일 · 차트 · 로그 탐색기, 로그 테이블은 `data-renders`)를 시나리오 전후로 읽은 증가량이에요. 클릭 · 입력 · 스크롤은 1초 틱 렌더가 섞이지 않게 **일시정지 상태**에서 쟀어요.
+
+| 상황 | 측정 구간 | 대시보드 | 최신 값 타일 | 차트 (1개당) | 로그 탐색기 | 로그 테이블 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 첫 로드 | 마운트 + 백필 60개 | 1 | 2 | 2 ¹ | 2 | 2 |
+| 실시간 수집 | 10초 (틱 10회) | **0** | 10 | 10 | **0** | **0** |
+| 확대 중 (수집은 계속) | 10초 | **0** | 10 | **0** | **0** | **0** |
+| 일시정지 | 10초 | 0 | 0 | 0 | 0 | 0 |
+| 보기 구간 1분 → 5분 | 클릭 1회 | 1 | **0** | 1 | 1 ² | **0** |
+| 로그 레벨 필터 칩 | 클릭 1회 | **0** | **0** | **0** | 1 | 2 |
+| 검색어 입력 "도쿄 실패" | 5글자 입력 | **0** | **0** | **0** | 1~2 ³ | 2~4 |
+| 10만 행 스크롤 (맨 끝까지) | 스크롤 300프레임 | **0** | **0** | **0** | **0** | 601 ⁴ |
+
+¹ 마운트 1회 + 백필 60개 반영 1회 — 60개를 넣어도 rAF로 묶어서 한 번만 그려요
+² 로그 탐색기는 `memo`가 아니라서 대시보드가 다시 그려질 때 함께 그려져요. 그 아래 로그 테이블은 `memo`라 0회예요
+³ 글자마다 다시 그려지지 않고 250ms 디바운스 뒤에 검색해요. 입력 사이 간격이 250ms를 넘으면 중간 검색이 한 번 더 일어나요 (3회 중 2회는 2 · 4, 1회는 1 · 2)
+⁴ 스크롤로는 로그 테이블만 그려지고(프레임당 약 2회) 차트 · 대시보드는 0회예요. 맨 끝에서도 DOM에 있는 행은 24개예요
+- 탭 숨김(rAF 정지)은 headless 브라우저에서 탭이 숨겨지지 않아(`visibilityState=visible`) 재지 못했어요
+
+### Core Web Vitals — 로그 탐색기 추가 전후 · 2026-10-15
+
+측정: `node perf/measure.mjs` · Lighthouse 모바일 기본값(4× CPU · 느린 4G) · 로컬 프로덕션 빌드 · 5회 중앙값 ([전체 기록](perf/RESULTS.md))
+
+| 지표 | 기준(Good) | 추가 전 (`3-map-idle`) | 추가 후 (`4-log-explorer`) |
 | --- | --- | --- | --- |
-| 실시간 | 0회 | 매초 | 매초 |
-| 확대 중 (데이터는 계속 수집) | 0회 | 매초 | **0회** |
-| 일시정지 | 0회 | 0회 | 0회 |
+| LCP | ≤ 2.5s | 4.36s | 4.66s |
+| CLS | ≤ 0.1 | 0.027 | 0.027 |
+| TBT | ≤ 200ms | 196ms | 94ms |
+| JS (같은 출처, 전송량) | | 244KB | 271KB |
+| INP (필터 칩 클릭) | ≤ 200ms | — | **24ms** |
+
+- 10만 건 로그를 만들고 조회하는 작업은 첫 페인트 뒤(`requestAnimationFrame`)로 미뤄서 TBT가 늘지 않았어요(회차별 88~155ms. 196→94ms 감소는 측정 PC 부하에 따른 오차로 봐요). 로그 탐색기를 추가하면서 JS는 27KB 늘었어요.
+- LCP 요소는 상단 소개 문구(`p.lede`)예요. 로컬 `next start`는 HTTP/1.1이라 LCP가 실제보다 길게 나와요. HTTP/2를 쓰는 Vercel Preview에서는 같은 페이지가 2.27s였어요(`preview-next-font`, 로그 탐색기 추가 전).
+- INP는 Lighthouse로 잴 수 없어서 Chrome DevTools Live Metrics에서 4× CPU slowdown을 걸고 필터 칩을 5번 정도 직접 클릭해 쟀어요. 10만 행 계산은 `useDeferredValue`로 클릭 응답 뒤로 미뤄져서, 칩 클릭은 Good 기준(200ms)의 8분의 1 안에 반응해요.
 
 ## Supabase 설정
 ### 1. 프로젝트 · 환경 변수
@@ -276,7 +308,7 @@ npm run test:all   # 단위 + E2E
 | | 범위 | 실행 |
 | --- | --- | --- |
 | **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 체크리스트 분류 추천(`guessCat`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
-| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 / 로그 탐색기: 10만 행 가상화 · 필터 · URL 복원 / 어드민: 접근 제어 → 폼 검증 → 응답 전 반영(요청을 붙잡아 확인) → 실패 주입 시 되돌림 → 동시 수정 충돌 | `npm run db:start` 후 `npm run test:e2e` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 / 로그 탐색기: 10만 행 가상화(가운데 · 끝 스크롤에도 DOM 30여 행, 행 번호 연속) → 검색 · 레벨 필터 · 정렬 결과를 **그려진 행 값 전체**로 확인 → URL 반영 · 직접 접속 · 새로고침 · 공유 링크 복원 / 어드민: 접근 제어 → 폼 검증 → 응답 전 반영(요청을 붙잡아 확인) → 실패 주입 시 되돌림 → 동시 수정 충돌 | `npm run db:start` 후 `npm run test:e2e` |
 
 **단위 테스트 커버리지** (v8, 순수 로직 `src/lib` · `src/api/rows.ts` 기준 — 화면 · 훅 · Supabase 호출은 E2E가 맡아요)
 
@@ -291,6 +323,8 @@ npm run test:all   # 단위 + E2E
 - 테스트 서버는 `next build` → `next start -p 3100`으로 띄워요. 이때 `.next`에 로컬 Supabase 주소로 빌드되므로, 직접 `npm start`하기 전에는 `npm run build`를 다시 해 주세요. (`next dev`는 `.next/dev`를 써서 영향이 없어요)
 - 실패하면 `playwright-report/`(HTML 리포트 · `npm run test:e2e:report`)와 `test-results/`(trace · 스크린샷 · 영상)를 확인하세요. CI에서는 artifact로 올라가요.
 - 필요한 변수는 `.env.example`의 'E2E 테스트' 항목을 참고하세요. 기본 설정에서는 넣을 값이 없어요.
+- `/monitor` 테스트는 DB를 쓰지 않아서 Supabase 없이도 돌릴 수 있어요. 주소만 로컬로 넘기면 돼요: `E2E_SUPABASE_URL=http://127.0.0.1:54321 E2E_SUPABASE_ANON_KEY=dummy npx playwright test e2e/monitor`
+- 로그 탐색기 테스트는 가상화 때문에 DOM에 있는 30여 행만 읽을 수 있어요. 그래서 첫 행만 보지 않고 **그려진 행 전부**의 값(레벨 · 메시지 · 사용자 · 지연 · 시간)을 읽어 조건과 정렬 순서를 확인하고, 10만 행 계산이 `useDeferredValue`로 늦게 반영되므로 `[data-stale]`이 사라진 뒤에 읽어요.
 - 샘플 기록북 (SSG): http://localhost:3000/book/tokyo-4days
 - 실시간 모니터링: http://localhost:3000/monitor (로그인 · Supabase 없이 동작)
 - 내 기록북 공유 (SSR): 앱 → 보관함 → **여행 기록북** → *기록북 링크 공유* / *공유 페이지 미리 보기*
@@ -309,7 +343,8 @@ CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내
 - **설치**: `npm ci`로 `package-lock.json`과 똑같이 설치하고, `setup-node`의 npm 캐시로 내려받는 시간을 줄여요. `.next/cache`도 캐시해요.
 - **concurrency**: 같은 PR에 새 커밋이 오면 이전 실행을 취소해요. `main` push는 취소하지 않아요.
 - **권한**: `permissions: contents: read`로 토큰 권한을 최소로 줄였어요.
-- **보호 규칙(권장)**: GitHub Settings › Branches › `main` 규칙에서 **Require status checks to pass** → `Typecheck · Lint · Test · Build`를 켜면, CI가 통과한 PR만 병합할 수 있어요.
+- **보호 규칙(권장)**: GitHub Settings › Rules(또는 Branches) › `main` 규칙에서 **Require a pull request before merging**과 **Require status checks to pass** → `Typecheck · Lint · Test · Build` · `E2E (Playwright · 로컬 Supabase)`를 켜면, 단위 테스트와 E2E를 모두 통과한 PR만 병합할 수 있어요.
+- **테스트 통과 → 배포**: Vercel은 `main`에 병합될 때만 Production으로 배포하므로, 위 보호 규칙을 켜면 **테스트를 통과한 코드만 운영에 나가요.** Preview는 테스트와 상관없이 push마다 만들어지는데, 리뷰용 화면이라 그대로 둬요. Preview까지 막으려면 `vercel.json`의 `"git": { "deploymentEnabled": false }`로 자동 배포를 끄고, CI에 `needs: [verify, e2e]`인 job을 두어 `vercel build` → `vercel deploy --prebuilt`로 직접 배포하면 돼요(Secrets: `VERCEL_TOKEN` · `VERCEL_ORG_ID` · `VERCEL_PROJECT_ID`). 이 경우 Vercel 봇의 PR 링크 댓글은 사라져요.
 
 ### CI 빌드에 Supabase 값 전달 (GitHub Secrets)
 `NEXT_PUBLIC_` 값은 빌드할 때 번들에 들어가서, 실제 배포와 같은 조건으로 빌드하려면 CI에도 넘겨야 해요.
@@ -346,12 +381,28 @@ CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내
 - **Preview는 다른 사람도 열 수 있어요**: Preview가 운영 DB를 쓰면 리뷰 중 만든 데이터가 운영에 쌓여요. 가능하면 Preview에는 별도 Supabase 프로젝트를 쓰고, 필요하면 Vercel의 *Deployment Protection*으로 Preview 접근을 제한해요.
 - **`.env.local`은 커밋하지 않아요** (`.gitignore`). 로컬 값은 `vercel env pull .env.local`로 Vercel에서 받아 올 수 있어요.
 
+## 항공권 캡처 인식 (Claude Vision · 서버 프록시)
+항공권 캡처를 올리면 서버(`POST /api/ticket-scan`)가 Claude(`claude-opus-5-5`)로 편명 · 시각 · 좌석 · 게이트 · 예약번호를 읽어 탑승권에 채워요. 브라우저는 우리 서버만 부르고, **API 키 · Claude 호출은 서버에만 있어요.**
+
+| 위협 · 비용 | 막는 방법 |
+| --- | --- |
+| API 키 노출 | 키는 `ANTHROPIC_API_KEY`(`NEXT_PUBLIC_` 아님)로만 받고, 호출 모듈은 `import 'server-only'` — 클라이언트에서 import하면 빌드가 실패해요. 오류 응답에는 내부 메시지 없이 `code`만 보내요 |
+| 아무나 호출 | Supabase 로그인 토큰(`Authorization: Bearer`)을 서버에서 확인 → 없으면 401 |
+| 비용 폭주 | 하루 제한: 사용자 10회 · 서비스 전체 30회. 넘으면 **429 + `Retry-After`**. 진짜 상한은 Anthropic Console의 월 지출 한도로 걸어요 |
+| 같은 이미지 반복 호출 | 이미지 SHA-256으로 결과를 캐시하고 **할당량보다 먼저** 확인해요 (다시 올린 이미지는 무료). 실패는 캐시하지 않아요 |
+| 이상한 파일 | 4MB 상한, 확장자 대신 **매직 넘버**로 JPEG · PNG · WebP · GIF만 허용. 브라우저가 1600px JPEG로 줄여 보내 이미지 토큰도 줄여요 |
+
+- 제한 · 캐시는 서버 메모리라 인스턴스마다 따로예요. 포트폴리오 규모에선 충분하고, 서비스로 키운다면 Redis(Upstash)로 옮기면 돼요.
+- **키가 없으면** API가 503(`not_configured`)을 주고, 화면은 예시 값으로 채워요(로컬 · CI · 배포 사이트 기본 동작 — 비용 0원).
+- **검증 범위**: 실제 키로 인식 품질은 재지 않았어요. 대신 Claude 응답을 가짜로 바꾼 단위 테스트(캐시 · 실패 처리 · 요청 형식)와 E2E(화면 흐름 · 429 · 항공권 아님 · 키 없을 때 대체)로 확인했고, 가짜 키로 로그인 → 서버 → 제한 → Anthropic API까지 실제 요청이 도달해 인증 실패가 502로 안전하게 바뀌는 것도 확인했어요.
+- 코드: `src/app/api/ticket-scan/route.ts` · `src/lib/server/` · `src/api/ticketScan.ts`. 테스트: `src/lib/server/*.test.ts`, `e2e/ticket-scan.spec.ts`.
+
 ## Google 지도
 기본은 API 키 없이 동작하는 Google 지도 임베드를 사용해요. 일정 좌표로 지도 중심 · 줌을 계산하고, 같은 메르카토르 투영으로 번호 핀과 연결선을 지도 위에 겹쳐 그려요 (그래서 기본 지도는 드래그 대신 핀 · 칩을 눌러 이동해요). 공식 **Maps Embed API**를 쓰려면 `.env.local`에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`를 넣으세요 (`.env.example` 참고) (공개 배포 시 HTTP 리퍼러 제한 필수).
 새로 추가한 장소의 좌표는 OpenStreetMap Nominatim으로 찾고, 못 찾으면 지도에서 장소 이름으로 검색해요.
 
 ## 데모 한계 · 향후 과제
-- 항공권/영수증 인식은 실제 OCR 대신 예시 값으로 채워요 → CLOVA OCR / Vision API 연동
+- 항공권 인식은 Claude Vision으로 연결했어요(키가 없으면 예시 값). 영수증 인식은 아직 예시 값이에요 → 같은 프록시 · 한도 · 캐시 구조로 연결
 - 보관함 파일 · 항공권 캡처는 작은 이미지를 data URL로 행 안에 저장해요 → Supabase Storage(사용자별 폴더 + Storage RLS)로 옮기기
 - 이전 버전에서 이 기기 localStorage에 저장한 여행은 자동으로 옮기지 않아요 → 첫 로그인 때 가져오기
 - 다른 기기 변경은 창 포커스 때 다시 불러와요 → Supabase Realtime으로 즉시 반영, 일행과 여행 공유(공유 테이블 + RLS)
