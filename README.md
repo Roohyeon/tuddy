@@ -306,7 +306,7 @@ npm run test:all   # 단위 + E2E
 | | 범위 | 실행 |
 | --- | --- | --- |
 | **단위 (Vitest)** | 날짜 · D-day(`utils` · `trip`), 조사(`josa`), 거리 · 이동 수단(`km` · `legOf`), 예산 계산(`lib/budget.ts`), 체크리스트 분류 추천(`guessCat`), 변경분 저장 · 공유 링크 · UUID v7, 모니터링(원형 버퍼 · LTTB · 지표 범위 · 일시정지/재개) | `npm test` |
-| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 / 로그 탐색기: 10만 행 가상화 · 필터 · URL 복원 / 어드민: 접근 제어 → 폼 검증 → 응답 전 반영(요청을 붙잡아 확인) → 실패 주입 시 되돌림 → 동시 수정 충돌 | `npm run db:start` 후 `npm run test:e2e` |
+| **E2E (Playwright)** | 회원가입 → 여행 만들기 → 지출 기록 → 총 지출 · 남은 예산 반영 → 새로고침 후 유지 / 체크리스트: 템플릿 생성 → 추가(분류 자동 추천) → 체크 · 진행률 → 삭제 · 되돌리기 → 출국 당일 탭 → 새로고침 후 유지 / 모니터링: 실시간 수집 → 일시정지 · 재개 → 드래그 확대 → 더블클릭 복귀 / 로그 탐색기: 10만 행 가상화(가운데 · 끝 스크롤에도 DOM 30여 행, 행 번호 연속) → 검색 · 레벨 필터 · 정렬 결과를 **그려진 행 값 전체**로 확인 → URL 반영 · 직접 접속 · 새로고침 · 공유 링크 복원 / 어드민: 접근 제어 → 폼 검증 → 응답 전 반영(요청을 붙잡아 확인) → 실패 주입 시 되돌림 → 동시 수정 충돌 | `npm run db:start` 후 `npm run test:e2e` |
 
 **단위 테스트 커버리지** (v8, 순수 로직 `src/lib` · `src/api/rows.ts` 기준 — 화면 · 훅 · Supabase 호출은 E2E가 맡아요)
 
@@ -321,6 +321,8 @@ npm run test:all   # 단위 + E2E
 - 테스트 서버는 `next build` → `next start -p 3100`으로 띄워요. 이때 `.next`에 로컬 Supabase 주소로 빌드되므로, 직접 `npm start`하기 전에는 `npm run build`를 다시 해 주세요. (`next dev`는 `.next/dev`를 써서 영향이 없어요)
 - 실패하면 `playwright-report/`(HTML 리포트 · `npm run test:e2e:report`)와 `test-results/`(trace · 스크린샷 · 영상)를 확인하세요. CI에서는 artifact로 올라가요.
 - 필요한 변수는 `.env.example`의 'E2E 테스트' 항목을 참고하세요. 기본 설정에서는 넣을 값이 없어요.
+- `/monitor` 테스트는 DB를 쓰지 않아서 Supabase 없이도 돌릴 수 있어요. 주소만 로컬로 넘기면 돼요: `E2E_SUPABASE_URL=http://127.0.0.1:54321 E2E_SUPABASE_ANON_KEY=dummy npx playwright test e2e/monitor`
+- 로그 탐색기 테스트는 가상화 때문에 DOM에 있는 30여 행만 읽을 수 있어요. 그래서 첫 행만 보지 않고 **그려진 행 전부**의 값(레벨 · 메시지 · 사용자 · 지연 · 시간)을 읽어 조건과 정렬 순서를 확인하고, 10만 행 계산이 `useDeferredValue`로 늦게 반영되므로 `[data-stale]`이 사라진 뒤에 읽어요.
 - 샘플 기록북 (SSG): http://localhost:3000/book/tokyo-4days
 - 실시간 모니터링: http://localhost:3000/monitor (로그인 · Supabase 없이 동작)
 - 내 기록북 공유 (SSR): 앱 → 보관함 → **여행 기록북** → *기록북 링크 공유* / *공유 페이지 미리 보기*
@@ -339,7 +341,8 @@ CI가 "합쳐도 안전한가"를 판단하고, CD가 "사용자에게 내보내
 - **설치**: `npm ci`로 `package-lock.json`과 똑같이 설치하고, `setup-node`의 npm 캐시로 내려받는 시간을 줄여요. `.next/cache`도 캐시해요.
 - **concurrency**: 같은 PR에 새 커밋이 오면 이전 실행을 취소해요. `main` push는 취소하지 않아요.
 - **권한**: `permissions: contents: read`로 토큰 권한을 최소로 줄였어요.
-- **보호 규칙(권장)**: GitHub Settings › Branches › `main` 규칙에서 **Require status checks to pass** → `Typecheck · Lint · Test · Build`를 켜면, CI가 통과한 PR만 병합할 수 있어요.
+- **보호 규칙(권장)**: GitHub Settings › Rules(또는 Branches) › `main` 규칙에서 **Require a pull request before merging**과 **Require status checks to pass** → `Typecheck · Lint · Test · Build` · `E2E (Playwright · 로컬 Supabase)`를 켜면, 단위 테스트와 E2E를 모두 통과한 PR만 병합할 수 있어요.
+- **테스트 통과 → 배포**: Vercel은 `main`에 병합될 때만 Production으로 배포하므로, 위 보호 규칙을 켜면 **테스트를 통과한 코드만 운영에 나가요.** Preview는 테스트와 상관없이 push마다 만들어지는데, 리뷰용 화면이라 그대로 둬요. Preview까지 막으려면 `vercel.json`의 `"git": { "deploymentEnabled": false }`로 자동 배포를 끄고, CI에 `needs: [verify, e2e]`인 job을 두어 `vercel build` → `vercel deploy --prebuilt`로 직접 배포하면 돼요(Secrets: `VERCEL_TOKEN` · `VERCEL_ORG_ID` · `VERCEL_PROJECT_ID`). 이 경우 Vercel 봇의 PR 링크 댓글은 사라져요.
 
 ### CI 빌드에 Supabase 값 전달 (GitHub Secrets)
 `NEXT_PUBLIC_` 값은 빌드할 때 번들에 들어가서, 실제 배포와 같은 조건으로 빌드하려면 CI에도 넘겨야 해요.
