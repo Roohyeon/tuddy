@@ -1,9 +1,10 @@
 'use client';
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { MetricStream, type StreamSnapshot } from '@/lib/monitor/metricStream';
 import { formatClock, formatSpan } from '@/lib/monitor/time';
 import { BufferMeter, LiveStats } from './LiveStats';
+import { LogExplorer, LogExplorerFallback } from './LogExplorer';
 import { MetricChart, type TimeRange } from './MetricChart';
 import { METRICS } from './metrics';
 import { useRenderCount, useStreamSelector } from './useStream';
@@ -95,6 +96,11 @@ export function MonitorDashboard() {
           <MetricChart key={m.key} stream={stream} metric={m} windowMs={windowMs} zoom={zoom} onZoom={onZoom} onReset={onReset} />
         ))}
       </section>
+
+      {/* 로그 탐색기는 URL 쿼리(useSearchParams)를 읽어요 → Suspense로 감싸야 위쪽 대시보드는 정적으로 미리 렌더링돼요 */}
+      <Suspense fallback={<LogExplorerFallback />}>
+        <LogExplorer />
+      </Suspense>
     </main>
   );
 }

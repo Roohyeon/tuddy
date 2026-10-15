@@ -1,0 +1,38 @@
+{
+  "/login": {
+    "files": 11,
+    "gzipKB": 277.5
+  },
+  "/home": {
+    "files": 12,
+    "gzipKB": 279.1
+  },
+  "/schedule": {
+    "files": 12,
+    "gzipKB": 280.1
+  },
+  "/budget": {
+    "files": 12,
+    "gzipKB": 278.4
+  },
+  "/packing": {
+    "files": 12,
+    "gzipKB": 276.9
+  },
+  "/vault": {
+    "files": 12,
+    "gzipKB": 277.5
+  },
+  "/pass": {
+    "files": 12,
+    "gzipKB": 279.3
+  },
+  "/monitor": {
+    "files": 8,
+    "gzipKB": 279.8
+  },
+  "/book/tokyo-4days": {
+    "files": 8,
+    "gzipKB": 178
+  }
+}

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { SITE_URL } from '@/lib/book';
+import { WebVitals } from '@/components/WebVitals';
+import { fontVars } from './fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -22,15 +24,8 @@ export const viewport: Viewport = {
 /** 공통 껍데기 — 앱(CSR)과 공유 기록북(SSR/SSG)이 함께 써요 */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ko">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* 루트 레이아웃이라 모든 페이지에 적용돼요 (Pages Router용 규칙의 오탐) */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif:wght@400;500&family=Outfit:wght@400;500&display=swap" rel="stylesheet" />
-      </head>
-      <body>{children}</body>
+    <html lang="ko" className={fontVars}>
+      <body><WebVitals />{children}</body>
     </html>
   );
 }
