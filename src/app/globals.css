@@ -271,14 +271,14 @@ h1,h2,h3,h4,p{margin:0}
 .reorder button{width:30px;height:30px;border-radius:var(--rad-btn);background:var(--surface-2);border:1px solid var(--hair);color:var(--fg);display:grid;place-items:center}
 .reorder button.danger{color:var(--alert)}
 
-/* AI 일정 · 관광 추천 */
-.ai-cta{display:flex;align-items:center;gap:14px;width:100%;margin-top:12px;padding:16px;border-radius:var(--rad-card);text-align:left;color:var(--fg);
+/* 관광지 자동 추천 · 관광 추천 */
+.auto-cta{display:flex;align-items:center;gap:14px;width:100%;margin-top:12px;padding:16px;border-radius:var(--rad-card);text-align:left;color:var(--fg);
   background:var(--surface);border:1px solid var(--hair-2);box-shadow:var(--hi);backdrop-filter:var(--frost);-webkit-backdrop-filter:var(--frost);transition:background .15s}
-.ai-cta:hover{background:var(--surface-2)}
-.ai-cta .ai-ic{width:44px;height:44px;border-radius:var(--rad-btn);display:grid;place-items:center;background:var(--haze);color:var(--air-ink);flex:none}
-.ai-cta b{display:block;font-size:16px;font-weight:500}
-.ai-cta small{display:block;font-size:13px;color:var(--fg-3)}
-.ai-cta .grow{flex:1;min-width:0}
+.auto-cta:hover{background:var(--surface-2)}
+.auto-cta .auto-ic{width:44px;height:44px;border-radius:var(--rad-btn);display:grid;place-items:center;background:var(--haze);color:var(--air-ink);flex:none}
+.auto-cta b{display:block;font-size:16px;font-weight:500}
+.auto-cta small{display:block;font-size:13px;color:var(--fg-3)}
+.auto-cta .grow{flex:1;min-width:0}
 .rec-list{display:grid;grid-auto-flow:column;grid-auto-columns:200px;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px 4px;scroll-snap-type:x mandatory}
 .rec-list::-webkit-scrollbar{display:none}
 .rec{scroll-snap-align:start;display:flex;flex-direction:column;border-radius:var(--rad-card);overflow:hidden;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--hi);color:var(--fg);

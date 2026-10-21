@@ -1,10 +1,8 @@
 /* =========================================================
-   관광 추천 · 자동 일정 — 서버 · 클라이언트가 같이 쓰는 타입 · 스키마 · 규칙 기반 일정
-   - 관광지 인기 순위는 Wikidata의 위키백과 언어판 수(sitelinks)로 매겨요 (많을수록 세계적으로 알려진 곳)
-   - AI(Claude)가 설정돼 있으면 서버가 이 후보로 일정을 짜고, 아니면 autoPlan()이 인기 순 + 가까운 곳끼리 묶어 짜요
-   (비밀값 없음. LLM 호출은 src/lib/server/planner.ts에만 있어요)
+   관광 추천 · 자동 추천 일정 — 외부 API 없이 기기 안에서 계산해요
+   - 관광지 인기 순위는 Wikidata의 위키백과 언어판 수(sitelinks) — 빌드 전에 정적 파일로 받아 둬요 (scripts/attractions.mjs)
+   - autoPlan()이 인기 순으로 그날의 첫 장소를 고르고, 가까운 곳끼리 묶어 빈 시간에 넣어요
    ========================================================= */
-import { z } from 'zod';
 import type { Destination, ScheduleItem, StopType, Trip } from '@/types/domain';
 import { dayItems, km, tripDays } from './trip';
 import { fmtDur, toMin, toTime, uid } from './utils';
@@ -21,39 +19,6 @@ export interface Attraction {
   score: number;
 }
 
-const STOP_TYPES = ['move', 'stay', 'sight', 'food', 'shop', 'rest'] as const;
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-/* ---------- AI 일정 요청 (브라우저 → /api/plan) ---------- */
-export const PlanRequestSchema = z.object({
-  dest: z.string().max(40),
-  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  days: z.number().int().min(1).max(30),
-  companion: z.string().max(10),
-  /** 이미 있는 일정 — 겹치지 않게 빈 시간만 채워요 */
-  existing: z.array(z.object({ day: z.number().int().min(0), time: z.string().regex(HHMM), title: z.string().max(40), dur: z.number().int().min(0).max(600) })).max(200),
-  candidates: z.array(z.object({
-    name: z.string().max(80), desc: z.string().max(200), type: z.enum(STOP_TYPES), score: z.number(), lat: z.number(), lng: z.number(),
-  })).max(40),
-});
-export type PlanRequest = z.infer<typeof PlanRequestSchema>;
-
-/* ---------- Claude 출력 ---------- */
-export const PlanOutputSchema = z.object({
-  days: z.array(z.object({
-    day: z.number().int().describe('0부터 시작하는 일차'),
-    title: z.string().describe('그날 동선 이름, 12자 이내 (예: "아사쿠사 · 우에노")'),
-    stops: z.array(z.object({
-      time: z.string().describe('도착 시각 HH:MM (24시간)'),
-      name: z.string().describe('장소 이름 — 후보 목록의 이름을 그대로 써요'),
-      type: z.enum(STOP_TYPES),
-      dur: z.number().int().describe('머무는 시간(분), 30~240'),
-      memo: z.string().describe('한 줄 팁, 30자 이내 (예: "오전에 가야 덜 붐벼요")'),
-    })),
-  })),
-});
-export type PlanOutput = z.infer<typeof PlanOutputSchema>;
-
 export interface PlanStop {
   day: number;
   time: string;
@@ -69,7 +34,6 @@ export interface PlanResult {
   stops: PlanStop[];
   /** 일차별 동선 이름 (비어 있던 날만) */
   titles: Record<number, string>;
-  source: 'ai' | 'auto';
 }
 
 /* ---------- 규칙 기반 일정 ---------- */
@@ -124,26 +88,7 @@ export function autoPlan(t: Trip, pool: Attraction[]): PlanResult {
     });
     if (!dayItems(t, day).length && !t.titles?.[day]) titles[day] = picked.length > 1 ? `${picked[0].name} 주변` : picked[0].name;
   }
-  return { stops, titles, source: 'auto' };
-}
-
-/** Claude가 돌려준 일정을 검사하고 후보의 좌표를 붙여요 — 형식이 틀린 칸은 버려요 */
-export function fromAiOutput(out: PlanOutput, req: Pick<PlanRequest, 'days' | 'candidates'>): PlanResult {
-  const byName = new Map(req.candidates.map(c => [norm(c.name), c]));
-  const stops: PlanStop[] = [], titles: Record<number, string> = {};
-  for (const d of out.days) {
-    if (d.day < 0 || d.day >= req.days) continue;
-    if (d.title.trim()) titles[d.day] = d.title.trim().slice(0, 20);
-    for (const s of d.stops) {
-      if (!HHMM.test(s.time) || !s.name.trim()) continue;
-      const c = byName.get(norm(s.name));
-      stops.push({
-        day: d.day, time: s.time, title: s.name.trim().slice(0, 30), type: s.type, dur: Math.min(240, Math.max(30, Math.round(s.dur / 30) * 30)),
-        memo: s.memo.trim().slice(0, 40), ...(c ? { lat: c.lat, lng: c.lng } : {}),
-      });
-    }
-  }
-  return { stops, titles, source: 'ai' };
+  return { stops, titles };
 }
 
 /** Wikidata 후보 + 앱에 미리 넣어 둔 추천 장소(공항 · 숙소 제외)를 합쳐요 */

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
 import type { Trip } from '@/types/domain';
 import { fetchHolidays, fetchLiveRate, geocode } from '@/api/external';
-import { fetchAttractions } from '@/api/plan';
+import { fetchAttractions } from '@/api/attractions';
 import { DEST } from '@/lib/destinations';
 import { longWeekends, type Holiday } from '@/lib/holidays';
 import { mergeCurated } from '@/lib/plan';
@@ -60,12 +60,12 @@ export function useHolidays(cc: string | null, years: number[]) {
   return { holidays, weekends, loading, failed, empty: !loading && !failed && !!cc && holidays.length === 0 };
 }
 
-/** 여행지 인기 관광지 — Wikidata(서버 캐시) + 앱에 넣어 둔 추천 장소. 실패해도 추천 장소는 보여 줘요 */
+/** 여행지 인기 관광지 — 앱과 같이 배포된 정적 파일 + 앱에 넣어 둔 추천 장소. 한 번 받으면 다시 받지 않아요 */
 export function useAttractions(dest: string) {
   const q = useQuery({
     queryKey: queryKeys.attractions(dest),
     queryFn: ({ signal }) => fetchAttractions(dest, signal),
-    staleTime: 60 * 60 * 1000,
+    staleTime: Infinity,
     retry: 1,
   });
   const items = useMemo(() => mergeCurated(DEST[dest], q.data ?? []), [dest, q.data]);

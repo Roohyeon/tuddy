@@ -1,8 +1,6 @@
 'use client';
-import { useEffect, useState, type FormEvent } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { requestPlan } from '@/api/plan';
-import { applyPlan } from '@/lib/plan';
+import { useMemo, useState, type FormEvent } from 'react';
+import { applyPlan, autoPlan } from '@/lib/plan';
 import { usePathname } from 'next/navigation';
 import type { StopType } from '@/types/domain';
 import { STYPE } from '@/lib/constants';
@@ -160,21 +158,14 @@ export function DatesSheet() {
   </>;
 }
 
-/** AI 일정 — 인기 관광지 후보로 빈 날을 채워요. 미리 보고 '일정에 추가'를 눌러야 들어가요 */
+/** 관광지 자동 추천 — 인기 관광지를 가까운 곳끼리 묶어 빈 시간에 넣어요. 외부 API · AI 없이 기기 안에서 계산해요 */
 export function PlanSheet() {
   const t = useTrip(), d = D(t), n = tripDays(t);
   const update = useUpdateAccount(), undoable = useUndoable(), closeSheet = useSheetStore(s => s.closeSheet), setUI = useUIStore(s => s.setUI);
   const pool = useAttractions(t.dest);
-  const plan = useMutation({ mutationFn: () => requestPlan(t, pool.items) });
-  const { mutate } = plan;
-  const ready = !pool.loading && pool.items.length > 0;
-  // 후보가 모이면 한 번 바로 짜요 (다시 짜기는 버튼으로)
-  useEffect(() => { if (ready) mutate(); }, [ready, mutate]);
-
-  const r = plan.data;
-  const days = r ? [...new Set(r.stops.map(s => s.day))].sort((a, b) => a - b) : [];
+  const r = useMemo(() => autoPlan(t, pool.items), [t, pool.items]);
+  const days = [...new Set(r.stops.map(s => s.day))].sort((a, b) => a - b);
   const apply = () => {
-    if (!r) return;
     let ids: string[] = [], prevTitles: string[] = [];
     update((_, tr) => { prevTitles = [...(tr.titles || [])]; ids = applyPlan(tr, r); });
     closeSheet();
@@ -183,15 +174,14 @@ export function PlanSheet() {
   };
 
   return <>
-    <SheetHead title={<><span className="cursive">AI</span> 일정 짜기</>} />
+    <SheetHead title="관광지 자동 추천" />
     <p className="muted" style={{ fontSize: 14, marginBottom: 12 }}>{d.city} {n - 1}박 {n}일 · 인기 관광지를 가까운 곳끼리 묶어 빈 시간에 넣어 드려요. 이미 넣은 일정은 그대로 둬요.</p>
-    {pool.loading || plan.isPending || (!r && ready && !plan.isError)
-      ? <div className="plan-load"><span className="spinner" />{pool.loading ? `${d.city} 인기 관광지를 모으는 중…` : '동선을 짜는 중… (최대 1분)'}</div>
-      : !pool.items.length ? <div className="empty"><b>추천할 관광지를 찾지 못했어요</b>잠시 후 다시 시도해 주세요.</div>
-      : plan.isError || !r ? <div className="empty"><b>일정을 만들지 못했어요</b><button className="link" style={{ marginTop: 8 }} onClick={() => mutate()}>다시 시도</button></div>
+    {pool.loading
+      ? <div className="plan-load"><span className="spinner" />{d.city} 인기 관광지를 불러오는 중…</div>
+      : !pool.items.length ? <div className="empty"><b>추천할 관광지가 아직 없어요</b>장소 추가로 직접 넣어 보세요.</div>
       : !r.stops.length ? <div className="empty"><b>더 넣을 칸이 없어요</b>모든 날이 이미 꽉 찼거나 추천 장소를 다 넣었어요.</div>
       : <>
-        <div className="note" style={{ marginTop: 0 }}>{r.source === 'ai' ? 'Claude가 인기 순위와 위치를 보고 짰어요.' : r.fallback ?? '인기 순 · 가까운 곳끼리 묶어 짰어요.'}</div>
+        <div className="note" style={{ marginTop: 0 }}>위키백과에 많이 실린 순서로 고르고, 하루 동선이 짧아지게 가까운 곳끼리 묶었어요. 도착 · 귀국일은 2곳만 넣어요.</div>
         {days.map(day => (
           <div key={day} className="plan-day">
             <h4>{day + 1}일차 · {r.titles[day] || dayTitle(t, day)}<small>{md(dayDate(t, day))} · {r.stops.filter(s => s.day === day).length}곳 추가</small></h4>
@@ -204,10 +194,7 @@ export function PlanSheet() {
             ))}
           </div>
         ))}
-        <div className="form" style={{ marginTop: 16 }}>
-          <button className="btn primary" onClick={apply}><Icon name="check" size="sm" /> {r.stops.length}곳 일정에 추가</button>
-          <button className="btn soft" onClick={() => mutate()}><Icon name="refresh" size="sm" /> 다시 짜기</button>
-        </div>
+        <button className="btn primary" style={{ marginTop: 16 }} onClick={apply}><Icon name="check" size="sm" /> {r.stops.length}곳 일정에 추가</button>
       </>}
   </>;
 }

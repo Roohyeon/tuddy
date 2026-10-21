@@ -42,9 +42,9 @@ export function ScheduleScreen() {
         <button className="round-btn dark" onClick={() => sheets.addSchedule(day)} aria-label="일정 추가"><Icon name="plus" /></button>
       </div>
 
-      <button className="ai-cta" style={{ margin: '0 0 14px' }} onClick={sheets.autoPlan}>
-        <span className="ai-ic"><Icon name="sparkle" /></span>
-        <span className="grow"><b><span className="cursive">AI</span>에게 일정 짜달라고 하기</b><small>{d.city} 인기 관광지로 빈 날을 알아서 채워 드려요</small></span>
+      <button className="auto-cta" style={{ margin: '0 0 14px' }} onClick={sheets.autoPlan}>
+        <span className="auto-ic"><Icon name="sparkle" /></span>
+        <span className="grow"><b>관광지 자동 추천</b><small>{d.city} 인기 관광지로 빈 날을 채워 드려요</small></span>
         <Icon name="chev" size="sm" />
       </button>
 
@@ -141,7 +141,7 @@ function Recommend({ day }: { day: number }) {
           );
         })}
       </div> : <Empty card icon="pin" title="추천할 관광지를 찾지 못했어요">{failed ? '잠시 후 다시 열어 보세요.' : '장소 추가로 직접 넣어 보세요.'}</Empty>}
-    {failed && list.length > 0 && <p className="src-note">인기 관광지를 불러오지 못해 Tuddy 추천 장소만 보여 드려요.</p>}
-    <p className="src-note">인기 순위 · <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> (위키백과 언어판 수 기준)</p>
+    {failed && list.length > 0 && <p className="src-note">인기 관광지 데이터를 읽지 못해 Tuddy 추천 장소만 보여 드려요.</p>}
+    <p className="src-note">인기 순위 · <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> (위키백과 언어판 수 기준 · 앱에 저장된 데이터)</p>
   </section>;
 }

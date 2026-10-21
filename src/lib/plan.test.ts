@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Trip } from '@/types/domain';
 import { DEST, popularOf, searchDest } from './destinations';
-import { applyPlan, autoPlan, fromAiOutput, mergeCurated, slotsFor, type Attraction } from './plan';
+import { applyPlan, autoPlan, mergeCurated, slotsFor, type Attraction } from './plan';
 import { applyDates, applyDest, makeTrip } from './trip';
 
 const trip = (start = '2030-05-01', end = '2030-05-04', dest = 'tokyo'): Trip =>
@@ -29,7 +29,6 @@ describe('규칙 기반 일정 — autoPlan', () => {
     const day1 = r.stops.filter(s => s.day === 1).map(s => s.title);
     expect(day1[0]).toBe('메이지 신궁');                // 남은 것 중 인기 1위
     expect(day1).toContain('신주쿠 교엔');
-    expect(r.source).toBe('auto');
   });
   it('도착일은 오후, 시간은 겹치지 않게 이어져요', () => {
     const r = autoPlan(trip(), EAST);
@@ -43,22 +42,6 @@ describe('규칙 기반 일정 — autoPlan', () => {
     const r = autoPlan(t, EAST);
     expect(r.stops.map(s => s.title)).not.toContain('센소지');
     expect(r.stops[0].time >= '12:00').toBe(true);   // 기존 일정(10:00 + 90분) 뒤
-  });
-});
-
-describe('AI 결과 검사 — fromAiOutput', () => {
-  const req = { days: 2, candidates: EAST.map(({ name, desc, type, score, lat, lng }) => ({ name, desc, type, score, lat, lng })) };
-  it('후보 좌표를 붙이고 형식이 틀린 칸 · 범위 밖 일차는 버려요', () => {
-    const r = fromAiOutput({ days: [
-      { day: 0, title: '아사쿠사', stops: [
-        { time: '10:00', name: '센소지', type: 'sight', dur: 95, memo: '아침이 한적해요' },
-        { time: '25:00', name: '스카이트리', type: 'sight', dur: 60, memo: '' },
-      ] },
-      { day: 5, title: 'x', stops: [{ time: '10:00', name: '우에노 공원', type: 'sight', dur: 60, memo: '' }] },
-    ] }, req);
-    expect(r.stops).toHaveLength(1);
-    expect(r.stops[0]).toMatchObject({ title: '센소지', lat: 35.7148, dur: 90 });
-    expect(r.titles).toEqual({ 0: '아사쿠사' });
   });
 });
 

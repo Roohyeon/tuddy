@@ -16,6 +16,7 @@
     "test:e2e:report": "playwright show-report",
     "test:all": "npm run test:unit && npm run test:e2e",
     "perf": "node perf/measure.mjs",
+    "data:attractions": "node scripts/attractions.mjs",
     "db:start": "supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase stop"
   },
