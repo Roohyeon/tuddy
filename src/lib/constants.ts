@@ -1,15 +1,16 @@
 import type { Companion, ExpenseCat, PackCat, StopType, TabKey, VaultType } from '@/types/domain';
 import type { IconName } from '@/components/ui/Icon';
 
-export const EXCAT: Record<ExpenseCat, { label: string; color: string; icon: IconName }> = {
-  flight: { label: '항공', color: '#2f4156', icon: 'plane' },
-  stay: { label: '숙소', color: '#567c8d', icon: 'bed' },
-  move: { label: '교통', color: '#93afc2', icon: 'train' },
-  ins: { label: '보험 · 통신', color: '#cfdde8', icon: 'shield' },
-  food: { label: '식비', color: '#c4896c', icon: 'food' },
-  shop: { label: '쇼핑', color: '#dcc6b8', icon: 'shop' },
-  sight: { label: '관광', color: '#7b9cab', icon: 'pin' },
-  etc: { label: '기타', color: '#b9c3cc', icon: 'receipt' },
+/** color — 앱(어두운 캔버스) · paper — 공유 기록북(밝은 종이) */
+export const EXCAT: Record<ExpenseCat, { label: string; color: string; paper: string; icon: IconName }> = {
+  flight: { label: '항공', color: '#f5f5f5', paper: '#2f4156', icon: 'plane' },
+  stay: { label: '숙소', color: '#a9bfdd', paper: '#567c8d', icon: 'bed' },
+  move: { label: '교통', color: '#6f8fb8', paper: '#93afc2', icon: 'train' },
+  ins: { label: '보험 · 통신', color: '#426188', paper: '#cfdde8', icon: 'shield' },
+  food: { label: '식비', color: '#d9c7b8', paper: '#c4896c', icon: 'food' },
+  shop: { label: '쇼핑', color: '#9a8f86', paper: '#dcc6b8', icon: 'shop' },
+  sight: { label: '관광', color: '#c9d6e8', paper: '#7b9cab', icon: 'pin' },
+  etc: { label: '기타', color: '#5d6470', paper: '#b9c3cc', icon: 'receipt' },
 };
 
 export const STYPE: Record<StopType, { label: string; icon: IconName }> = {

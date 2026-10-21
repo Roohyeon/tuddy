@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createTrip, guardRemoteSupabase, signUp } from './support/app';
 
-const TRIP = { city: '제주', cityEn: 'Jeju', start: '2030-05-01', end: '2030-05-04', nights: '3박 4일 여행', budget: 1_000_000, dailyPreview: '₩250,000' };
+const TRIP = { city: '제주', cityEn: 'Jeju', domestic: true, start: '2030-05-01', end: '2030-05-04', nights: '3박 4일', budget: 1_000_000, dailyPreview: '₩250,000' };
 /** 1×1 PNG — 브라우저가 줄여서(JPEG) 서버로 보내요 */
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 

@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 const SheetLoading = () => <div className="sheet-loading" aria-busy="true" aria-label="불러오는 중"><span className="spinner" /></div>;
 
 export const TripsSheet = dynamic(() => import('./AccountSheets').then(m => m.TripsSheet), { ssr: false, loading: SheetLoading });
+export const TripEditSheet = dynamic(() => import('./AccountSheets').then(m => m.TripEditSheet), { ssr: false, loading: SheetLoading });
 export const AlertsSheet = dynamic(() => import('./AccountSheets').then(m => m.AlertsSheet), { ssr: false, loading: SheetLoading });
 export const ExpenseSheet = dynamic(() => import('./BudgetSheets').then(m => m.ExpenseSheet), { ssr: false, loading: SheetLoading });
 export const BudgetSheet = dynamic(() => import('./BudgetSheets').then(m => m.BudgetSheet), { ssr: false, loading: SheetLoading });
@@ -20,6 +21,7 @@ export const FlightSheet = dynamic(() => import('./PassSheets').then(m => m.Flig
 export const PassImageSheet = dynamic(() => import('./PassSheets').then(m => m.PassImageSheet), { ssr: false, loading: SheetLoading });
 export const SchedSheet = dynamic(() => import('./ScheduleSheets').then(m => m.SchedSheet), { ssr: false, loading: SheetLoading });
 export const RenameDaySheet = dynamic(() => import('./ScheduleSheets').then(m => m.RenameDaySheet), { ssr: false, loading: SheetLoading });
+export const PlanSheet = dynamic(() => import('./ScheduleSheets').then(m => m.PlanSheet), { ssr: false, loading: SheetLoading });
 export const MapSheet = dynamic(() => import('./ScheduleSheets').then(m => m.MapSheet), { ssr: false, loading: SheetLoading });
 export const DatesSheet = dynamic(() => import('./ScheduleSheets').then(m => m.DatesSheet), { ssr: false, loading: SheetLoading });
 export const VoucherSaveSheet = dynamic(() => import('./VaultSheets').then(m => m.VoucherSaveSheet), { ssr: false, loading: SheetLoading });

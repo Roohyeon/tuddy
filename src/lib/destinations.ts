@@ -59,7 +59,18 @@ export const COUNTRIES: Record<CountryCode, CountryRow> = {
 // [key, 도시, 영문, 나라, 공항 코드, 공항 표시, 비행 시간(분), 위도, 경도, 더운 곳]
 export const CITIES: CityRow[] = [
   ['jeju','제주','Jeju','KR','CJU','제주',70,33.4996,126.5312],
+  ['seogwipo','서귀포','Seogwipo','KR','CJU','제주',70,33.2541,126.5600],
   ['busan','부산','Busan','KR','PUS','부산 · 김해',60,35.1796,129.0756],
+  ['gangneung','강릉','Gangneung','KR','YNY','양양',55,37.7519,128.8761],
+  ['sokcho','속초','Sokcho','KR','YNY','양양',55,38.2070,128.5918],
+  ['yeosu','여수','Yeosu','KR','RSU','여수',60,34.7604,127.6622],
+  ['gyeongju','경주','Gyeongju','KR','KPO','포항경주',55,35.8562,129.2247],
+  ['pohang','포항','Pohang','KR','KPO','포항경주',55,36.0190,129.3435],
+  ['daegu','대구','Daegu','KR','TAE','대구',55,35.8714,128.6014],
+  ['ulsan','울산','Ulsan','KR','USN','울산',60,35.5384,129.3114],
+  ['gwangju','광주','Gwangju','KR','KWJ','광주',55,35.1595,126.8526],
+  ['tongyeong','통영','Tongyeong','KR','HIN','사천',60,34.8544,128.4332],
+  ['jeonju','전주','Jeonju','KR','KUV','군산',50,35.8242,127.1480],
   ['tokyo','도쿄','Tokyo','JP','NRT','도쿄 · 나리타',140,35.6812,139.7671],
   ['osaka','오사카','Osaka','JP','KIX','오사카 · 간사이',105,34.6937,135.5023],
   ['kyoto','교토','Kyoto','JP','KIX','오사카 · 간사이',105,35.0116,135.7681],
@@ -173,9 +184,15 @@ for (const [key, city, en, cc, code, airport, flight, lat, lng, hot] of CITIES){
 }
 export const DEST_KEYS: DestKey[] = Object.keys(DEST);
 export const POPULAR: DestKey[] = ['tokyo','osaka','fukuoka','danang','bangkok','taipei','hongkong','cebu','singapore','paris','hawaii','jeju'];
+export const POPULAR_DOM: DestKey[] = ['jeju','busan','gangneung','yeosu','gyeongju','sokcho','jeonju','tongyeong','seogwipo','daegu','gwangju','pohang','ulsan'];
 
-// 검색: 도시 · 나라 · 영문 · 공항 코드 (초성/공백 무시)
-export function searchDest(q: string): Destination[] {
+/** 국내 · 해외 */
+export type DestScope = 'dom' | 'intl';
+export const inScope = (d: Destination, scope?: DestScope) => !scope || (scope === 'dom') === d.dom;
+export const popularOf = (scope: DestScope) => (scope === 'dom' ? POPULAR_DOM : POPULAR).map(k => DEST[k]).filter(d => inScope(d, scope));
+
+// 검색: 도시 · 나라 · 영문 · 공항 코드 (초성/공백 무시) — scope를 주면 국내/해외 안에서만 찾아요
+export function searchDest(q: string, scope?: DestScope): Destination[] {
   const n = (s: string) => s.toLowerCase().replace(/\s|·/g, '');
   q = n(q); if (!q) return [];
   const score = (d: Destination) => {
@@ -186,5 +203,5 @@ export function searchDest(q: string): Destination[] {
     if ((n(d.city) + n(d.en) + n(d.country) + n(d.countryEn) + n(d.airport)).includes(q)) return 4;
     return -1;
   };
-  return DEST_KEYS.map(k => [DEST[k], score(DEST[k])] as const).filter(x => x[1] >= 0).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  return DEST_KEYS.filter(k => inScope(DEST[k], scope)).map(k => [DEST[k], score(DEST[k])] as const).filter(x => x[1] >= 0).sort((a, b) => a[1] - b[1]).map(x => x[0]);
 }

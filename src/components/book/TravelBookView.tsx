@@ -61,11 +61,11 @@ export function TravelBookView({ book, sample }: { book: TravelBook; sample?: bo
           <h2 className={s.h2}>어디에 썼을까</h2>
           <section className={s.day}>
             <div className={s.stack} role="img" aria-label="카테고리별 지출 비율">
-              {book.spend.map(([c, v]) => <i key={c} style={{ width: `${v / total * 100}%`, background: EXCAT[c].color }} />)}
+              {book.spend.map(([c, v]) => <i key={c} style={{ width: `${v / total * 100}%`, background: EXCAT[c].paper }} />)}
             </div>
             <ul className={s.legend}>
               {book.spend.map(([c, v]) => (
-                <li key={c}><span className={s.sw} style={{ background: EXCAT[c].color }} /><span>{EXCAT[c].label}</span><span className={s.pct}>{Math.round(v / total * 100)}%</span><b>{won(v)}</b></li>
+                <li key={c}><span className={s.sw} style={{ background: EXCAT[c].paper }} /><span>{EXCAT[c].label}</span><span className={s.pct}>{Math.round(v / total * 100)}%</span><b>{won(v)}</b></li>
               ))}
             </ul>
             <p className={s.note}>1인 기준 · 총 {won(total)}</p>

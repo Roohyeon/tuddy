@@ -9,8 +9,8 @@
    5. Claude 호출
    ========================================================= */
 import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
 import { MAX_IMAGE_BYTES, sniffImage, type TicketScanResponse } from '@/lib/ticketScan';
+import { userIdFrom } from '@/lib/server/auth';
 import { createLimiter } from '@/lib/server/rateLimit';
 import { cachedScan, isVisionConfigured, scanTicket, VisionParseError, VisionRefusedError } from '@/lib/server/ticketVision';
 
@@ -25,17 +25,6 @@ const fail = (status: number, code: string, message: string, headers?: HeadersIn
   Response.json({ error: { code, message } }, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 
 const ok = (body: TicketScanResponse) => Response.json(body, { headers: { 'Cache-Control': 'no-store', 'X-Cache': body.cached ? 'HIT' : 'MISS' } });
-
-/** Supabase access token → 사용자 id (서명 · 만료는 Supabase Auth가 확인해요) */
-async function userIdFrom(req: Request): Promise<string | null> {
-  const token = req.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!token || !url || !key) return null;
-  const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await sb.auth.getUser(token);
-  return error ? null : data.user?.id ?? null;
-}
 
 export async function POST(req: Request) {
   if (!isVisionConfigured()) return fail(503, 'not_configured', '항공권 인식이 아직 설정되지 않았어요.');

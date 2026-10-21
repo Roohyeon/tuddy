@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTrip, guardRemoteSupabase, saved, SB_ORIGIN, signUp } from './support/app';
 
 /** 국내 여행(제주) — 여권 대신 신분증, 멀티 어댑터 · eSIM 없음 */
-const TRIP = { city: '제주', cityEn: 'Jeju', start: '2030-05-01', end: '2030-05-04', nights: '3박 4일 여행', budget: 1_000_000, dailyPreview: '₩250,000' };
+const TRIP = { city: '제주', cityEn: 'Jeju', domestic: true, start: '2030-05-01', end: '2030-05-04', nights: '3박 4일', budget: 1_000_000, dailyPreview: '₩250,000' };
 /** 템플릿에 없는 이름으로 추가해요 — '케이블'은 전자기기, 키워드가 없으면 기타 */
 const ADD = [{ t: '여분 USB 케이블', cat: '전자기기' }, { t: '휴대용 선풍기', cat: '기타' }];
 const DDAY_ADD = '공항버스 시간 확인';

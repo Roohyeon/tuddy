@@ -26,7 +26,7 @@ function qrCells(seed: string) {
 /** QR 모서리 위치 표시 */
 function Finder({ x, y }: { x: number; y: number }) {
   return <>
-    <rect x={x + .5} y={y + .5} width="6" height="6" rx="1.4" fill="none" stroke="#2f4156" strokeWidth="1" />
+    <rect x={x + .5} y={y + .5} width="6" height="6" rx="1.4" fill="none" stroke="#1b1b1b" strokeWidth="1" />
     <rect x={x + 2} y={y + 2} width="3" height="3" rx=".6" />
   </>;
 }
@@ -35,7 +35,7 @@ function Finder({ x, y }: { x: number; y: number }) {
 function QR({ seed }: { seed: string }) {
   const N = QR_N, cells = qrCells(seed);
   return (
-    <svg viewBox={`0 0 ${N} ${N}`} fill="#2f4156" shapeRendering="crispEdges" role="img" aria-label="탑승권 QR 코드">
+    <svg viewBox={`0 0 ${N} ${N}`} fill="#1b1b1b" shapeRendering="crispEdges" role="img" aria-label="탑승권 QR 코드">
       {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1.02" height="1.02" />)}
       <Finder x={0} y={0} /><Finder x={N - 7} y={0} /><Finder x={0} y={N - 7} />
     </svg>

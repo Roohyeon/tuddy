@@ -1,19 +1,23 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { requestPlan } from '@/api/plan';
+import { applyPlan } from '@/lib/plan';
 import { usePathname } from 'next/navigation';
 import type { StopType } from '@/types/domain';
 import { STYPE } from '@/lib/constants';
 import { gmapsUrl } from '@/lib/map';
-import { D, datesInfo, dayDate, dayItems, dayTitle, legOf, tripDays } from '@/lib/trip';
+import { applyDates, D, datesInfo, dayDate, dayItems, dayTitle, legOf, tripDays } from '@/lib/trip';
 import { diffDays, fmtDur, md, mdw, toDate, toMin, toTime, uid } from '@/lib/utils';
 import { useTrip, useUndoable, useUpdateAccount } from '@/queries/account';
-import { useGeocodeStop } from '@/queries/external';
+import { useAttractions, useGeocodeStop } from '@/queries/external';
 import { useSheetStore } from '@/stores/sheet';
 import { useToast } from '@/stores/toast';
 import { useUIStore } from '@/stores/ui';
 import { Icon } from '@/components/ui/Icon';
 import { MapBlock } from '@/components/ui/MapBlock';
 import { Opts, SheetHead } from '@/components/ui/common';
+import { RangeCalendar } from '@/components/ui/RangeCalendar';
 
 const STATUS: [string, string][] = [['', '없음'], ['예약 완료', '예약 완료'], ['결제 완료', '결제 완료'], ['무료', '무료']];
 
@@ -132,44 +136,78 @@ export function MapSheet({ day }: { day: number }) {
   </>;
 }
 
-/** 여행 날짜 변경 */
+/** 여행 날짜 변경 — 월별 캘린더 · 공휴일 표시 */
 export function DatesSheet() {
-  const t = useTrip(), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast(), setUI = useUIStore(s => s.setUI);
+  const t = useTrip(), d = D(t), update = useUpdateAccount(), closeSheet = useSheetStore(s => s.closeSheet), toast = useToast(), setUI = useUIStore(s => s.setUI);
   const [start, setStart] = useState(t.start);
   const [end, setEnd] = useState(t.end);
-  const [err, setErr] = useState('');
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!start || !end) return setErr('날짜를 골라 주세요.');
-    const n = diffDays(toDate(end), toDate(start)) + 1;
-    if (n < 1) return setErr('귀국일이 출발일보다 빨라요.');
-    if (n > 30) return setErr('최대 30일까지 계획할 수 있어요.');
-    // 줄어든 일차의 일정은 마지막 날로 모으되 원래 일차를 기억해 두고, 다시 늘리면 제자리로 돌려놓아요
-    let moved = 0, back = 0;
-    update((_, tr) => {
-      tr.schedule.forEach(s => {
-        if (s.dayWas != null && s.dayWas <= n - 1) { s.day = s.dayWas; delete s.dayWas; back++; }
-        else if (s.day > n - 1) { if (s.dayWas == null) s.dayWas = s.day; s.day = n - 1; moved++; }
-      });
-      if (tr.titles) tr.titles = tr.titles.slice(0, n);
-      tr.start = start; tr.end = end; tr.flight.out.date = start; tr.flight.back.date = end;
-    });
-    const ui = useUIStore.getState();
+    let r = { moved: 0, back: 0, days: 1 };
+    update((_, tr) => { r = applyDates(tr, start, end); });
+    const ui = useUIStore.getState(), n = diffDays(toDate(end), toDate(start)) + 1;
     setUI({ day: Math.min(ui.day, n - 1), sday: Math.min(ui.sday, n - 1) });
     closeSheet();
-    toast(`${mdw(toDate(start))} – ${mdw(toDate(end))}로 바꿨어요${moved ? ` · 일정 ${moved}개를 마지막 날로 옮겼어요` : back ? ` · 일정 ${back}개를 원래 날로 되돌렸어요` : ''}`);
+    toast(`${mdw(toDate(start))} – ${mdw(toDate(end))}로 바꿨어요${r.moved ? ` · 일정 ${r.moved}개를 마지막 날로 옮겼어요` : r.back ? ` · 일정 ${r.back}개를 원래 날로 되돌렸어요` : ''}`);
   };
   return <>
     <SheetHead title="여행 날짜 변경" />
     <form className="form" onSubmit={submit}>
-      <div className="row2">
-        <label className="field"><span>출발</span><input className="input" type="date" value={start} required onChange={e => { const v = e.target.value; setStart(v); if (end < v) setEnd(v); }} /></label>
-        <label className="field"><span>귀국</span><input className="input" type="date" value={end} min={start} required onChange={e => setEnd(e.target.value)} /></label>
-      </div>
-      <p className="muted num" style={{ fontSize: 13, paddingLeft: 2 }}>{datesInfo(start, end)}</p>
+      <RangeCalendar start={start} end={end} cc={d.cc} country={d.dom ? '국내' : d.country} allowPast onChange={(a, b) => { setStart(a); setEnd(b); }} />
       <div className="note" style={{ marginTop: 0 }}>일차별 일정은 그대로 따라 옮겨져요. 여행이 짧아지면 남는 일차의 일정은 마지막 날로 모여요.</div>
-      <p className="err" role="alert">{err}</p>
-      <button className="btn primary" type="submit">날짜 변경</button>
+      <button className="btn primary" type="submit">날짜 변경 · {datesInfo(start, end).split(' · ')[0]}</button>
     </form>
+  </>;
+}
+
+/** AI 일정 — 인기 관광지 후보로 빈 날을 채워요. 미리 보고 '일정에 추가'를 눌러야 들어가요 */
+export function PlanSheet() {
+  const t = useTrip(), d = D(t), n = tripDays(t);
+  const update = useUpdateAccount(), undoable = useUndoable(), closeSheet = useSheetStore(s => s.closeSheet), setUI = useUIStore(s => s.setUI);
+  const pool = useAttractions(t.dest);
+  const plan = useMutation({ mutationFn: () => requestPlan(t, pool.items) });
+  const { mutate } = plan;
+  const ready = !pool.loading && pool.items.length > 0;
+  // 후보가 모이면 한 번 바로 짜요 (다시 짜기는 버튼으로)
+  useEffect(() => { if (ready) mutate(); }, [ready, mutate]);
+
+  const r = plan.data;
+  const days = r ? [...new Set(r.stops.map(s => s.day))].sort((a, b) => a - b) : [];
+  const apply = () => {
+    if (!r) return;
+    let ids: string[] = [], prevTitles: string[] = [];
+    update((_, tr) => { prevTitles = [...(tr.titles || [])]; ids = applyPlan(tr, r); });
+    closeSheet();
+    setUI({ sday: days[0] ?? 0 });
+    undoable(`${r.stops.length}곳을 일정에 넣었어요`, (_, tr) => { tr.schedule = tr.schedule.filter(s => !ids.includes(s.id)); tr.titles = prevTitles; });
+  };
+
+  return <>
+    <SheetHead title={<><span className="cursive">AI</span> 일정 짜기</>} />
+    <p className="muted" style={{ fontSize: 14, marginBottom: 12 }}>{d.city} {n - 1}박 {n}일 · 인기 관광지를 가까운 곳끼리 묶어 빈 시간에 넣어 드려요. 이미 넣은 일정은 그대로 둬요.</p>
+    {pool.loading || plan.isPending || (!r && ready && !plan.isError)
+      ? <div className="plan-load"><span className="spinner" />{pool.loading ? `${d.city} 인기 관광지를 모으는 중…` : '동선을 짜는 중… (최대 1분)'}</div>
+      : !pool.items.length ? <div className="empty"><b>추천할 관광지를 찾지 못했어요</b>잠시 후 다시 시도해 주세요.</div>
+      : plan.isError || !r ? <div className="empty"><b>일정을 만들지 못했어요</b><button className="link" style={{ marginTop: 8 }} onClick={() => mutate()}>다시 시도</button></div>
+      : !r.stops.length ? <div className="empty"><b>더 넣을 칸이 없어요</b>모든 날이 이미 꽉 찼거나 추천 장소를 다 넣었어요.</div>
+      : <>
+        <div className="note" style={{ marginTop: 0 }}>{r.source === 'ai' ? 'Claude가 인기 순위와 위치를 보고 짰어요.' : r.fallback ?? '인기 순 · 가까운 곳끼리 묶어 짰어요.'}</div>
+        {days.map(day => (
+          <div key={day} className="plan-day">
+            <h4>{day + 1}일차 · {r.titles[day] || dayTitle(t, day)}<small>{md(dayDate(t, day))} · {r.stops.filter(s => s.day === day).length}곳 추가</small></h4>
+            {r.stops.filter(s => s.day === day).map((s, i) => (
+              <div key={i} className="plan-stop">
+                <time className="num">{s.time}</time>
+                <span><b>{s.title}</b><small>{STYPE[s.type].label} · {fmtDur(s.dur)}{s.memo ? ` · ${s.memo}` : ''}</small></span>
+                <Icon name={STYPE[s.type].icon} size="sm" />
+              </div>
+            ))}
+          </div>
+        ))}
+        <div className="form" style={{ marginTop: 16 }}>
+          <button className="btn primary" onClick={apply}><Icon name="check" size="sm" /> {r.stops.length}곳 일정에 추가</button>
+          <button className="btn soft" onClick={() => mutate()}><Icon name="refresh" size="sm" /> 다시 짜기</button>
+        </div>
+      </>}
   </>;
 }

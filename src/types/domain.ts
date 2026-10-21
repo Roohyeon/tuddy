@@ -231,7 +231,9 @@ export interface NewTripInput {
 
 /** 새 여행 만들기 진행 상태 */
 export interface OnboardingDraft extends Omit<NewTripInput, 'budget'> {
-  step: 0 | 1 | 2;
+  /** 0 국내/해외 · 여행지 → 1 날짜 → 2 동행 → 3 예산 */
+  step: 0 | 1 | 2 | 3;
+  scope: 'dom' | 'intl';
   budget: number | string;
   q?: string;
 }

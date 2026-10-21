@@ -43,14 +43,14 @@ export function MapBlock({ t, day, big, onExpand }: { t: Trip; day: number; big?
         <svg className="ov" aria-hidden="true">
           {line && <>
             <polyline points={line} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity=".85" />
-            <polyline points={line} fill="none" stroke="#2f4156" strokeWidth="2.6" strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={line} fill="none" stroke="#1b1b1b" strokeWidth="2.6" strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round" />
           </>}
           {view?.markers.map(m => (
             <g key={m.id} className={cx('mk', m.on && 'on', m.far && 'far')} onClick={() => pick(m.on ? null : m.id)}>
               <title>{`${m.n}. ${m.title}`}</title>
-              {m.label && <text x={m.label.x} y={m.y + 4} textAnchor={m.label.anchor} fontSize="11" fontWeight="700" fill="#2f4156" stroke="#fff" strokeWidth="3" paintOrder="stroke">{m.label.text}</text>}
-              <circle cx={m.x} cy={m.y} r={m.on ? 15 : 13} fill={m.on ? '#f5efeb' : '#2f4156'} stroke={m.on ? '#2f4156' : '#fff'} strokeWidth="3" strokeDasharray={m.far ? '4 3' : undefined} />
-              <text x={m.x} y={m.y + 4.5} textAnchor="middle" fontSize="12.5" fontWeight="700" fill={m.on ? '#2f4156' : '#fff'}>{m.n}</text>
+              {m.label && <text x={m.label.x} y={m.y + 4} textAnchor={m.label.anchor} fontSize="11" fontWeight="700" fill="#1b1b1b" stroke="#fff" strokeWidth="3" paintOrder="stroke">{m.label.text}</text>}
+              <circle cx={m.x} cy={m.y} r={m.on ? 15 : 13} fill={m.on ? '#f5f5f5' : '#1b1b1b'} stroke={m.on ? '#1b1b1b' : '#fff'} strokeWidth="3" strokeDasharray={m.far ? '4 3' : undefined} />
+              <text x={m.x} y={m.y + 4.5} textAnchor="middle" fontSize="12.5" fontWeight="700" fill={m.on ? '#1b1b1b' : '#fff'}>{m.n}</text>
             </g>
           ))}
         </svg>

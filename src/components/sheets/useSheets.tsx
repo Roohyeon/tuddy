@@ -6,7 +6,7 @@ import { useSheetStore } from '@/stores/sheet';
 // 시트는 지연 로딩해요 (lazy.tsx) — 이 훅을 쓰는 화면의 초기 JS에 시트 코드가 들어가지 않아요
 import {
   AlertsSheet, BookSheet, BudgetSheet, CaptureSheet, DatesSheet, DdaySheet, ExpenseSheet, FlightSheet, MapSheet,
-  PackSheet, PassImageSheet, RenameDaySheet, SchedSheet, TripsSheet, VoucherSaveSheet, VoucherViewSheet,
+  PackSheet, PassImageSheet, PlanSheet, TripEditSheet, RenameDaySheet, SchedSheet, TripsSheet, VoucherSaveSheet, VoucherViewSheet,
 } from './lazy';
 
 export function useSheets() {
@@ -30,6 +30,8 @@ export function useSheets() {
     viewVoucher: (id: string) => openSheet(<VoucherViewSheet id={id} />),
     book: () => openSheet(<BookSheet />),
     trips: () => openSheet(<TripsSheet />),
+    editTrip: (id: string) => openSheet(<TripEditSheet key={id} id={id} />),
+    autoPlan: () => openSheet(<PlanSheet />),
     alerts: () => openSheet(<AlertsSheet />),
   }), [openSheet, closeSheet]);
 }

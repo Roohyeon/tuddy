@@ -123,9 +123,35 @@ export function makeTrip({ dest, start, end, companion, people, budget }: NewTri
   };
 }
 
+/**
+ * 여행 날짜 바꾸기 — 일차별 일정은 그대로 따라 옮겨져요.
+ * 줄어든 일차의 일정은 마지막 날로 모으되 원래 일차를 기억해 두고, 다시 늘리면 제자리로 돌려놓아요
+ */
+export function applyDates(tr: Trip, start: string, end: string) {
+  const n = diffDays(toDate(end), toDate(start)) + 1;
+  let moved = 0, back = 0;
+  tr.schedule.forEach(s => {
+    if (s.dayWas != null && s.dayWas <= n - 1) { s.day = s.dayWas; delete s.dayWas; back++; }
+    else if (s.day > n - 1) { if (s.dayWas == null) s.dayWas = s.day; s.day = n - 1; moved++; }
+  });
+  if (tr.titles) tr.titles = tr.titles.slice(0, n);
+  tr.start = start; tr.end = end; tr.flight.out.date = start; tr.flight.back.date = end;
+  return { moved, back, days: n };
+}
+
+/** 여행지 바꾸기 — 환율 · 항공 구간을 새 여행지에 맞추고, 일정 · 준비물 · 지출은 그대로 둬요 */
+export function applyDest(tr: Trip, dest: DestKey) {
+  if (tr.dest === dest) return;
+  const d = DEST[dest];
+  tr.dest = dest; tr.rate = d.rate; tr.rateMode = 'manual';
+  tr.template = `${d.country} · ${toDate(tr.start).getMonth() + 1}월 템플릿 적용됨`;
+  Object.assign(tr.flight.out, { from: d.from, to: d.code });
+  Object.assign(tr.flight.back, { from: d.code, to: d.from });
+}
+
 export function newOnboarding(): OnboardingDraft {
   const s = addDays(today(), 30);
-  return { step: 0, dest: 'tokyo', start: iso(s), end: iso(addDays(s, 3)), companion: '친구', people: 2, budget: 800000 };
+  return { step: 0, scope: 'intl', dest: 'tokyo', start: iso(s), end: iso(addDays(s, 3)), companion: '친구', people: 2, budget: 800000 };
 }
 
 export function place(key: DestKey, name: string) {
