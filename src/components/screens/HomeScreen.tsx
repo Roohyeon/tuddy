@@ -9,7 +9,7 @@ import { useAccount, useTrip } from '@/queries/account';
 import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
-import { CheckRow, Ring, StopsList } from '@/components/ui/common';
+import { CheckRow, Ring, StopsList, usePerfNotch } from '@/components/ui/common';
 
 export function PassTimes({ t }: { t: Trip }) {
   const { out: o, back: b } = t.flight, s = toDate(t.start), e = toDate(t.end);
@@ -24,7 +24,7 @@ export function PassTimes({ t }: { t: Trip }) {
 }
 
 export function HomeScreen() {
-  const t = useTrip(), { db } = useAccount(), homeDay = useUIStore(s => s.day), setUI = useUIStore(s => s.setUI), { go } = useNav(), sheets = useSheets();
+  const t = useTrip(), { db } = useAccount(), homeDay = useUIStore(s => s.day), setUI = useUIStore(s => s.setUI), { go } = useNav(), sheets = useSheets(), notchRef = usePerfNotch();
   const d = D(t), f = t.flight, dd = ddayInfo(t), n = tripDays(t);
   const pk = t.packing, pkDone = pk.filter(x => x.done).length, pct = pk.length ? pkDone / pk.length : 0;
   const dy = t.dday, dyDone = dy.filter(x => x.done).length;
@@ -39,7 +39,7 @@ export function HomeScreen() {
   };
 
   return (
-    <main className="screen fade-in">
+    <main className="screen home fade-in">
       <div className="page-h">
         <div><span className="eyebrow">PASS</span><h1 className="greet">{db!.name}님, {josa(d.city, '로')} 떠날 준비<br />함께 챙겨볼까요?</h1></div>
         <div className="h-actions">
@@ -48,7 +48,7 @@ export function HomeScreen() {
         </div>
       </div>
 
-      <section className="pass" aria-label="탑승권 요약" style={{ '--notch': '63%' } as CSSProperties}>
+      <section ref={notchRef} className="pass" aria-label="탑승권 요약" style={{ '--notch': '63%' } as CSSProperties}>
         <span className="notch l" /><span className="notch r" />
         <div className="pass-top"><span className="mono"><Icon name="plane" size="sm" /> BOARDING PASS</span><span className="dday num">{dd.label}</span></div>
         <div className="pass-trip"><span className="cc">{d.cc}</span>{d.country} · {d.city} 여행 <small>{n - 1}박 {n}일 · {compLabel(t)}</small></div>

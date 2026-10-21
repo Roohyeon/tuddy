@@ -117,7 +117,7 @@ body {
     radial-gradient(900px 600px at 100% 100%, #f5efeb 0%, transparent 60%);
 }
 body:has(.device) {
-  background: #fff;
+  background: #eaf1fa;
 }
 button,
 input,
@@ -212,9 +212,10 @@ p {
   overflow: clip;
   color: var(--fg);
   font-weight: 400;
-  background: var(--void);
+  /* 살짝 푸른 캔버스 — 흰 유리 면이 바탕과 갈라져 보여요 */
+  background: linear-gradient(180deg, #e6effb 0%, #f1f6fd 45%, #e3ecf9 100%);
 }
-/* 사진 대신 쓰는 대기층: 옅은 하늘 · 살구빛 덩어리가 유리 뒤에서 번져 서리 유리가 보이게 해요 */
+/* 사진 대신 쓰는 대기층: 하늘색 · 라벤더 · 살구빛 덩어리가 유리 뒤에서 번져 서리 유리가 보이게 해요 */
 .device::before {
   content: "";
   position: absolute;
@@ -223,16 +224,21 @@ p {
   z-index: 0;
   filter: blur(40px);
   background:
-    radial-gradient(46% 32% at 12% 6%, rgb(140 185 245 / 0.7), transparent 70%),
+    radial-gradient(50% 34% at 10% 4%, rgb(110 165 240 / 0.75), transparent 70%),
     radial-gradient(
-      40% 28% at 96% 34%,
-      rgb(255 190 160 / 0.65),
+      40% 28% at 96% 30%,
+      rgb(150 190 250 / 0.6),
       transparent 70%
     ),
-    radial-gradient(44% 28% at 6% 72%, rgb(185 165 255 / 0.5), transparent 70%),
     radial-gradient(
-      54% 32% at 72% 104%,
-      rgb(140 215 205 / 0.55),
+      36% 22% at 92% 62%,
+      rgb(255 195 170 / 0.45),
+      transparent 70%
+    ),
+    radial-gradient(44% 28% at 4% 70%, rgb(170 160 255 / 0.5), transparent 70%),
+    radial-gradient(
+      56% 32% at 70% 104%,
+      rgb(120 200 230 / 0.55),
       transparent 70%
     );
 }
@@ -251,7 +257,7 @@ p {
     border-radius: 44px;
     box-shadow:
       0 0 0 1px rgb(0 0 0 / 0.06),
-      0 0 0 10px #f2f3f5,
+      0 0 0 10px #e3ebf5,
       0 0 0 11px rgb(0 0 0 / 0.08),
       0 30px 60px -20px rgb(40 60 90 / 0.25);
   }
@@ -482,20 +488,38 @@ p {
 .pass > * {
   position: relative;
 }
+/* 펀칭 구멍 — 흰 원을 덧대면 유리 · 색 번짐 위에서 흰 점으로 보여요.
+   마스크로 탑승권 양옆을 실제로 둥글게 뚫고, .notch는 구멍 둘레선만 그려요 */
+.pass:has(.notch) {
+  --notch-r: 11px;
+  --notch-y: calc(var(--notch, 62%) + var(--notch-r));
+  -webkit-mask:
+    radial-gradient(circle var(--notch-r) at 0 var(--notch-y), transparent 96%, #000 100%) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch-r) at 100% var(--notch-y), transparent 96%, #000 100%) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch-r) at 0 var(--notch-y), transparent 96%, #000 100%) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch-r) at 100% var(--notch-y), transparent 96%, #000 100%) right / 51% 100% no-repeat;
+}
 .pass .notch {
   position: absolute;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--void);
+  background: transparent;
   border: 1px solid var(--hair-2);
   top: var(--notch, 62%);
 }
 .pass .notch.l {
-  left: -12px;
+  left: -11px;
 }
 .pass .notch.r {
-  right: -12px;
+  right: -11px;
+}
+/* 홈은 카드 · 버튼 모서리를 더 둥글게 */
+.screen.home {
+  --rad-card: 22px;
+  --rad-img: 16px;
+  --rad-btn: 12px;
 }
 .pass-top {
   display: flex;
