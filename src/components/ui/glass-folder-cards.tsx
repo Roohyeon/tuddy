@@ -522,6 +522,14 @@ const FRONT_PATH =
   (FRONT_H - 22) +
   "Z"
 
+// The front is cut with a mask, not clip-path: Chrome ignores clip-path for the
+// backdrop-filter of a 3D-transformed element and blurs a plain rectangle,
+// which squares off the rounded corners.
+const FRONT_MASK =
+  "url(\"data:image/svg+xml," +
+  encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + W + " " + FRONT_H + "'><path d='" + FRONT_PATH + "'/></svg>") +
+  "\") 0 0 / 100% 100% no-repeat"
+
 const MAX_VISIBLE = 4
 
 const SAMPLE_FILES: FolderFile[] = [
@@ -744,7 +752,7 @@ export default function GlassFolder({
           <div
             key={bump}
             className={"gf-front" + (bump ? " gf-front--bump" : "")}
-            style={{ clipPath: "path('" + FRONT_PATH + "')" }}
+            style={{ mask: FRONT_MASK, WebkitMask: FRONT_MASK }}
           >
             <div className="gf-tint" aria-hidden="true" />
             <div className="gf-spec" aria-hidden="true" />
