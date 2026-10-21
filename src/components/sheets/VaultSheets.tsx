@@ -94,9 +94,9 @@ export function VoucherViewSheet({ id }: { id: string }) {
       : <div className="pass" style={{ padding: 20 }}>
         <div className="pass-top"><span className="mono">{VKIND[v.type].toUpperCase()}</span><Icon name={vIcon(v)} /></div>
         <h3 style={{ fontSize: 20, marginTop: 16 }}>{v.title}</h3>
-        <p style={{ color: 'rgb(255 255 255 / .75)', fontSize: 13, marginTop: 4 }}>{v.sub}</p>
+        <p style={{ color: 'var(--fg-2)', fontSize: 13, marginTop: 4 }}>{v.sub}</p>
         <div className="perf" />
-        <p className="mono" style={{ fontSize: 11, marginTop: 12, color: 'rgb(255 255 255 / .7)' }}>TUDDY · OFFLINE COPY</p>
+        <p className="mono" style={{ fontSize: 11, marginTop: 12, color: 'var(--fg-2)' }}>TUDDY · OFFLINE COPY</p>
       </div>}
     <dl className="kv" style={{ marginTop: 12 }}>
       <dt>제목</dt><dd>{v.title}</dd>
@@ -127,9 +127,9 @@ export function BookSheet() {
   return <>
     <SheetHead title="여행 기록북" />
     <div className="pass" style={{ padding: 22 }}>
-      <span className="mono" style={{ fontSize: 11, color: 'rgb(255 255 255 / .75)' }}>TRAVEL BOOK · {d.cc}</span>
+      <span className="mono" style={{ fontSize: 11, color: 'var(--fg-2)' }}>TRAVEL BOOK · {d.cc}</span>
       <h3 style={{ fontFamily: 'var(--f-serif)', fontSize: 30, fontWeight: 500, marginTop: 14 }}>{d.city}, {n - 1}박 {n}일</h3>
-      <p style={{ color: 'rgb(255 255 255 / .75)', fontSize: 13 }}>{mdw(toDate(t.start))} – {mdw(toDate(t.end))} · {compLabel(t)}</p>
+      <p style={{ color: 'var(--fg-2)', fontSize: 13 }}>{mdw(toDate(t.start))} – {mdw(toDate(t.end))} · {compLabel(t)}</p>
       <div className="perf" />
       <div className="fl"><div><label>방문</label><b>{t.schedule.length}곳</b></div><div><label>지출</label><b>{won(spent(t))}</b></div><div><label>보관</label><b>{t.vault.length}개</b></div></div>
     </div>

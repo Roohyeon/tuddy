@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useCallback, type ReactNode } from 'react';
 import type { CheckKind, DdayItem, PackingItem, Trip } from '@/types/domain';
 import { STYPE } from '@/lib/constants';
 import { dayItems, legOf } from '@/lib/trip';
@@ -9,11 +9,26 @@ import { useSheetStore } from '@/stores/sheet';
 import { useToast } from '@/stores/toast';
 import { CheckBox, Icon, type IconName } from './Icon';
 
+/** 탑승권 펀칭 구멍(--notch)을 점선(.perf) 높이에 맞춰요 — 내용 길이가 바뀌어도 따라가요 */
+export function usePerfNotch() {
+  return useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const place = () => {
+      const perf = el.querySelector<HTMLElement>('.perf');
+      if (perf) el.style.setProperty('--notch', `${perf.offsetTop - 11}px`);
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+}
+
 export function Ring({ pct, size = 58, sw = 6 }: { pct: number; size?: number; sw?: number }) {
   const r = (size - sw) / 2, c = 2 * Math.PI * r;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(255 255 255 / .14)" strokeWidth={sw} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--hair-2)" strokeWidth={sw} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f5f5f5" strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .6s' }} />
     </svg>
   );

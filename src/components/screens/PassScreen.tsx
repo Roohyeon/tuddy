@@ -10,6 +10,7 @@ import { useToast } from '@/stores/toast';
 import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
+import { usePerfNotch } from '@/components/ui/common';
 
 const QR_N = 25;
 
@@ -70,7 +71,7 @@ const NOTIFY: [keyof NotifySettings, string, string][] = [
 ];
 
 export function PassScreen() {
-  const t = useTrip(), { db } = useAccount(), dir = useUIStore(s => s.passDir), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), toast = useToast(), { back } = useNav(), sheets = useSheets();
+  const t = useTrip(), { db } = useAccount(), dir = useUIStore(s => s.passDir), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), toast = useToast(), { back } = useNav(), sheets = useSheets(), notchRef = usePerfNotch();
   const f = t.flight, o = f[dir], d = D(t), date = toDate(o.date);
   const home: [string, string] = [d.from, d.fromName], dest: [string, string] = [d.code, d.airport];
   const [from, to] = dir === 'out' ? [home, dest] : [dest, home];
@@ -106,7 +107,7 @@ export function PassScreen() {
         <button role="tab" className={cx(dir === 'back' && 'on')} onClick={() => setUI({ passDir: 'back' })}>오는 편 · {md(toDate(f.back.date))}</button>
       </div>
 
-      <section className="pass pass-full" style={{ marginTop: 14, '--notch': f.captured ? '50%' : '70%' } as CSSProperties}>
+      <section ref={notchRef} className="pass pass-full" style={{ marginTop: 14, '--notch': f.captured ? '50%' : '70%' } as CSSProperties}>
         <span className="notch l" /><span className="notch r" />
         <div className="pass-top"><span className="mono">BOARDING PASS</span>
           {f.captured ? <span className="auto"><Icon name="check" size="xs" /> 캡처에서 자동 입력됨</span> : <span className="auto">직접 입력</span>}</div>

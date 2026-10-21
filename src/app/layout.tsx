@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { SITE_URL } from '@/lib/book';
+import { Agentation } from 'agentation';
 import { WebVitals } from '@/components/WebVitals';
 import { fontVars } from './fonts';
 import './globals.css';
@@ -25,7 +26,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" className={fontVars}>
-      <body><WebVitals />{children}</body>
+      <body>
+        <WebVitals />
+        {children}
+        {/* 개발 중에만 — 화면 요소에 메모를 달아 에이전트에게 넘기는 툴바 */}
+        {process.env.NODE_ENV === 'development' && <Agentation />}
+      </body>
     </html>
   );
 }

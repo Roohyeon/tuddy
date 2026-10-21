@@ -7,13 +7,13 @@ import { vGroup, vIcon } from '@/lib/trip';
 import { cx, md, toDate } from '@/lib/utils';
 import { useTrip } from '@/queries/account';
 import { useSheets } from '@/components/sheets/useSheets';
-import GlassFolder, { type ArtPreset, type FolderFile } from '@/components/ui/glass-folder-cards';
+import GlassFolder, { type FolderFile } from '@/components/ui/glass-folder-cards';
 import { Icon } from '@/components/ui/Icon';
 import { Empty } from '@/components/ui/common';
 
 const FILTERS: [VaultFilter, string][] = [['all', '전체'], ['voucher', '바우처'], ['receipt', '영수증'], ['ticket', 'e-티켓']];
-/* 보관함 폴더 — 서리 유리 앞판 뒤에 파일이 꽂혀 있어요 (Glassmorphism 폴더 카드) */
-const FOLDERS: [Exclude<VaultFilter, 'all'>, string, ArtPreset][] = [['voucher', '바우처', 'dusk'], ['ticket', 'e-티켓', 'aurora'], ['receipt', '영수증', 'glacier']];
+/* 보관함 폴더 — 서리 유리 앞판 뒤에 파일이 꽂혀 있어요 (Glassmorphism 폴더 카드 · 2×2) */
+const FOLDERS: [VaultFilter, string][] = [['all', '전체'], ['voucher', '바우처'], ['ticket', 'e-티켓'], ['receipt', '영수증']];
 
 export function VaultScreen() {
   const t = useTrip(), sheets = useSheets();
@@ -31,19 +31,19 @@ export function VaultScreen() {
       <div className="page-h"><div><span className="eyebrow">ARCHIVE</span><h1>보관함</h1><p className="sub">{t.vault.length}개 저장 · 모두 오프라인에서 열 수 있어요</p></div></div>
       <div className="search"><Icon name="search" size="sm" /><input className="input" type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="바우처, 영수증, 예약번호 검색" aria-label="보관함 검색" /></div>
       <div className="up-row">
-        <button className="up dark" onClick={sheets.scanVoucher}><span className="ui"><Icon name="upload" /></span><span><b>바우처 올리기</b><small>캡처 · PDF · 메일</small></span></button>
-        <button className="up light" onClick={sheets.scanReceipt}><span className="ui"><Icon name="scan" /></span><span><b>영수증 스캔</b><small>가계부에 자동 기록</small></span></button>
+        <button className="up dark" onClick={sheets.scanVoucher}><span className="ui"><Icon name="upload" size="sm" /></span><b>바우처 올리기</b></button>
+        <button className="up light" onClick={sheets.scanReceipt}><span className="ui"><Icon name="scan" size="sm" /></span><b>영수증 스캔</b></button>
       </div>
       <div className="folders">
-        {FOLDERS.map(([k, label, art], i) => {
-          const list = t.vault.filter(v => vGroup(v) === k);
+        {FOLDERS.map(([k, label], i) => {
+          const list = k === 'all' ? t.vault : t.vault.filter(v => vGroup(v) === k);
           const files: FolderFile[] = list.map(v => ({
             name: v.title, meta: md(toDate(v.date)),
             ...(v.file?.data && v.file.type?.startsWith('image/') ? { image: v.file.data } : {}),
           }));
           // 폴더는 처음 받은 파일 목록을 스스로 들고 있어서, 목록이 바뀌면 새로 그려요
-          return <GlassFolder key={k + list.map(v => v.id).join()} label={label} meta={`${list.length}개`} tone="dark" art={art} seed={i + 3}
-            files={files} action="none" width={176} appearDelay={i * 120} labelPlacement="bottom-left"
+          return <GlassFolder key={k + list.map(v => v.id).join()} label={label} meta={`${list.length}개`} tone="light" art="none"
+            files={files} action="none" width={172} appearDelay={i * 120} labelPlacement="bottom-left"
             onOpenChange={open => { if (open) setFilter(k); }}
             onFileSelect={(_, idx) => { const v = list[idx]; if (v) sheets.viewVoucher(v.id); }} />;
         })}
