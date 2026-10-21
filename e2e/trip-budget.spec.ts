@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createTrip, guardRemoteSupabase, saved, SB_ORIGIN, signUp } from './support/app';
 
 /** 여행지 · 날짜 · 예산 (날짜를 고정해 오늘 날짜와 무관하게 같은 결과가 나와요) */
-const TRIP = { city: '제주', cityEn: 'Jeju', start: '2030-05-01', end: '2030-05-04', nights: '3박 4일 여행', budget: 1_000_000, dailyPreview: '₩250,000' };
+const TRIP = { city: '제주', cityEn: 'Jeju', domestic: true, start: '2030-05-01', end: '2030-05-04', nights: '3박 4일', budget: 1_000_000, dailyPreview: '₩250,000' };
 const EXPENSES = [
   { title: '흑돼지 저녁', amount: 30000, cat: '식비' },
   { title: '오션뷰 숙소', amount: 120000, cat: '숙소' },

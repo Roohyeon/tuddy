@@ -1,12 +1,11 @@
 'use client';
 /* 3. 홈 (PASS) */
 import type { CSSProperties } from 'react';
-import type { Companion, FlightLeg, Trip } from '@/types/domain';
-import { COMPS } from '@/lib/constants';
+import type { FlightLeg, Trip } from '@/types/domain';
 import { compLabel, D, dayDate, dayItems, dayTitle, ddayInfo, spent, tripDays } from '@/lib/trip';
 import { cx, fmtDur, josa, md, mdw, ordDay, toDate, today, WEEK, won } from '@/lib/utils';
 import { useNav } from '@/hooks/useNav';
-import { useAccount, useTrip, useUpdateAccount } from '@/queries/account';
+import { useAccount, useTrip } from '@/queries/account';
 import { useUIStore } from '@/stores/ui';
 import { useSheets } from '@/components/sheets/useSheets';
 import { Icon } from '@/components/ui/Icon';
@@ -25,7 +24,7 @@ export function PassTimes({ t }: { t: Trip }) {
 }
 
 export function HomeScreen() {
-  const t = useTrip(), { db } = useAccount(), homeDay = useUIStore(s => s.day), setUI = useUIStore(s => s.setUI), update = useUpdateAccount(), { go } = useNav(), sheets = useSheets();
+  const t = useTrip(), { db } = useAccount(), homeDay = useUIStore(s => s.day), setUI = useUIStore(s => s.setUI), { go } = useNav(), sheets = useSheets();
   const d = D(t), f = t.flight, dd = ddayInfo(t), n = tripDays(t);
   const pk = t.packing, pkDone = pk.filter(x => x.done).length, pct = pk.length ? pkDone / pk.length : 0;
   const dy = t.dday, dyDone = dy.filter(x => x.done).length;
@@ -34,7 +33,6 @@ export function HomeScreen() {
   const vk: Record<string, number> = {};
   t.vault.forEach(v => { const k = v.type === 'ticket' ? 'e티켓' : v.type === 'receipt' ? '영수증' : '바우처'; vk[k] = (vk[k] || 0) + 1; });
   const day = Math.min(homeDay, n - 1);
-  const setComp = (c: Companion) => update((_, tr) => { tr.companion = c; tr.people = c === '혼자' ? 1 : Math.max(2, tr.people); });
   const fl = (lbl: string, key: keyof FlightLeg) => {
     const val = f.out[key], show = f.captured && val;
     return <div><label>{lbl}</label><b className={cx(!show && 'empty')}>{show ? val : '· · ·'}</b></div>;
@@ -45,7 +43,7 @@ export function HomeScreen() {
       <div className="page-h">
         <div><span className="eyebrow">PASS</span><h1 className="greet">{db!.name}님, {josa(d.city, '로')} 떠날 준비<br />함께 챙겨볼까요?</h1></div>
         <div className="h-actions">
-          <button className="round-btn" onClick={sheets.trips} aria-label="여행 · 계정"><Icon name="swap" /></button>
+          <button className="round-btn" onClick={sheets.trips} aria-label="내 여행 · 계정"><Icon name="swap" /></button>
           <button className="round-btn" onClick={sheets.alerts} aria-label="알림"><Icon name="bell" />{dy.some(x => !x.done) && <span className="dot" />}</button>
         </div>
       </div>
@@ -53,8 +51,7 @@ export function HomeScreen() {
       <section className="pass" aria-label="탑승권 요약" style={{ '--notch': '63%' } as CSSProperties}>
         <span className="notch l" /><span className="notch r" />
         <div className="pass-top"><span className="mono"><Icon name="plane" size="sm" /> BOARDING PASS</span><span className="dday num">{dd.label}</span></div>
-        <div className="pass-trip"><span className="cc">{d.cc}</span>{d.country} · {d.city} 여행 <small>{n - 1}박 {n}일</small>
-          <button className="mini-edit" onClick={sheets.editDates} aria-label="여행 날짜 변경"><Icon name="cal" size="xs" /> 날짜 변경</button></div>
+        <div className="pass-trip"><span className="cc">{d.cc}</span>{d.country} · {d.city} 여행 <small>{n - 1}박 {n}일 · {compLabel(t)}</small></div>
         <button onClick={() => go('pass')} style={{ display: 'block', width: '100%', textAlign: 'left', color: 'inherit' }}>
           <div className="route">
             <div><div className="code">{d.from}</div><div className="city">{d.fromName}</div></div>
@@ -63,10 +60,6 @@ export function HomeScreen() {
           </div>
           <PassTimes t={t} />
         </button>
-        <div className="pass-row"><span>일행</span><span>{compLabel(t)}</span></div>
-        <div className="comp" role="radiogroup" aria-label="동행">
-          {COMPS.map(c => <button key={c} role="radio" aria-checked={t.companion === c} className={cx(t.companion === c && 'on')} onClick={() => setComp(c)}>{c}</button>)}
-        </div>
         <div className="perf" />
         <div className="fl">{fl('편명', 'no')}{fl('좌석', 'seat')}{fl('게이트', 'gate')}</div>
         {f.captured

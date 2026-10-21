@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#c9d8e4',
+  themeColor: '#000000',
 };
 
 /** 공통 껍데기 — 앱(CSR)과 공유 기록북(SSR/SSG)이 함께 써요 */
